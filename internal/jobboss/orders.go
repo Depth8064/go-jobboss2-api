@@ -55,6 +55,16 @@ func (c *Client) GetOrders(ctx context.Context, query url.Values) (ListResponse[
 	return GetJSON[ListResponse[Order]](ctx, c, "/api/v1/orders", query)
 }
 
+// GetAllOrderLineItems fetches order line items from /api/v1/order-line-items.
+func (c *Client) GetAllOrderLineItems(ctx context.Context, query url.Values) (ListResponse[OrderLineItem], error) {
+	return GetJSON[ListResponse[OrderLineItem]](ctx, c, "/api/v1/order-line-items", query)
+}
+
+// GetAllOrderRoutings fetches order routings from /api/v1/order-routings.
+func (c *Client) GetAllOrderRoutings(ctx context.Context, query url.Values) (ListResponse[OrderRouting], error) {
+	return GetJSON[ListResponse[OrderRouting]](ctx, c, "/api/v1/order-routings", query)
+}
+
 // GetOrderByNumber fetches a single order by order number.
 func (c *Client) GetOrderByNumber(ctx context.Context, orderNumber string, query url.Values) (SingleResponse[Order], error) {
 	orderNumber = strings.TrimSpace(orderNumber)

@@ -121,6 +121,22 @@ func TestOrderLineItemsRoutingsAndReleases(t *testing.T) {
 		switch r.URL.Path {
 		case "/oauth2/api-user/token":
 			_ = json.NewEncoder(w).Encode(TokenResponse{AccessToken: "tok", ExpiresIn: 3600})
+		case "/api/v1/order-line-items":
+			if r.Method != http.MethodGet {
+				w.WriteHeader(http.StatusMethodNotAllowed)
+				return
+			}
+			_ = json.NewEncoder(w).Encode(ListResponse[OrderLineItem]{
+				Data: []OrderLineItem{{OrderNumber: "SO-100", ItemNumber: 1, PartNumber: "PN-1", Status: "Open"}},
+			})
+		case "/api/v1/order-routings":
+			if r.Method != http.MethodGet {
+				w.WriteHeader(http.StatusMethodNotAllowed)
+				return
+			}
+			_ = json.NewEncoder(w).Encode(ListResponse[OrderRouting]{
+				Data: []OrderRouting{{OrderNumber: "SO-100", ItemNumber: 1, StepNumber: 10, OperationCode: "CUT"}},
+			})
 		case "/api/v1/orders/SO-100/order-line-items":
 			if r.Method != http.MethodPost {
 				w.WriteHeader(http.StatusMethodNotAllowed)
@@ -187,6 +203,17 @@ func TestOrderLineItemsRoutingsAndReleases(t *testing.T) {
 		MaxAuthRetryOn401: 0,
 	})
 
+	q := url.Values{}
+	q.Set("fields", "orderNumber,itemNumber,partNumber")
+	allItems, err := c.GetAllOrderLineItems(context.Background(), q)
+	if err != nil || len(allItems.Data) != 1 || allItems.Data[0].PartNumber != "PN-1" {
+		t.Fatalf("GetAllOrderLineItems failed: resp=%+v err=%v", allItems, err)
+	}
+	allRoutings, err := c.GetAllOrderRoutings(context.Background(), nil)
+	if err != nil || len(allRoutings.Data) != 1 || allRoutings.Data[0].StepNumber != 10 {
+		t.Fatalf("GetAllOrderRoutings failed: resp=%+v err=%v", allRoutings, err)
+	}
+
 	liCreate, err := c.CreateOrderLineItem(context.Background(), "SO-100", OrderLineItemCreate{
 		PartNumber:      "PN-1",
 		PartDescription: "Widget",
@@ -196,8 +223,6 @@ func TestOrderLineItemsRoutingsAndReleases(t *testing.T) {
 		t.Fatalf("CreateOrderLineItem failed: resp=%+v err=%v", liCreate, err)
 	}
 
-	q := url.Values{}
-	q.Set("fields", "orderNumber,itemNumber,partNumber")
 	liGet, err := c.GetOrderLineItem(context.Background(), "SO-100", "1", q)
 	if err != nil || liGet.Data.PartNumber != "PN-1" {
 		t.Fatalf("GetOrderLineItem failed: resp=%+v err=%v", liGet, err)
