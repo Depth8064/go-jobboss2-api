@@ -112,13 +112,10 @@ type (
 	WorkCenterMaintenance        = internal.WorkCenterMaintenance
 )
 
-type ListResponse[T any] struct {
-	Data []T `json:"Data"`
-}
-
-type SingleResponse[T any] struct {
-	Data T `json:"Data"`
-}
+// ListResponse and SingleResponse are type aliases for the internal envelope
+// types, ensuring callers and *Client method signatures share the same types.
+type ListResponse[T any] = internal.ListResponse[T]
+type SingleResponse[T any] = internal.SingleResponse[T]
 
 const (
 	DefaultTake = internal.DefaultTake
