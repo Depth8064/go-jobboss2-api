@@ -74,6 +74,14 @@ type (
 	PurchaseOrderRelease         = internal.PurchaseOrderRelease
 	Quote                        = internal.Quote
 	QuoteLineItem                = internal.QuoteLineItem
+	ReasonCode                   = internal.ReasonCode
+	Release                      = internal.Release
+	ReportRequest                = internal.ReportRequest
+	ReportStatus                 = internal.ReportStatus
+	Salesperson                  = internal.Salesperson
+	ShippingAddress              = internal.ShippingAddress
+	TaxCode                      = internal.TaxCode
+	Term                         = internal.Term
 )
 
 type ListResponse[T any] struct {
