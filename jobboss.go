@@ -88,6 +88,10 @@ type (
 	ShippingAddress              = internal.ShippingAddress
 	TaxCode                      = internal.TaxCode
 	Term                         = internal.Term
+	Vendor                       = internal.Vendor
+	VendorReturn                 = internal.VendorReturn
+	VendorReturnLineItem         = internal.VendorReturnLineItem
+	VendorReturnRelease          = internal.VendorReturnRelease
 )
 
 type ListResponse[T any] struct {
