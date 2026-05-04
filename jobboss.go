@@ -52,6 +52,9 @@ type (
 	DocumentControl              = internal.DocumentControl
 	DocumentHistory              = internal.DocumentHistory
 	DocumentReview               = internal.DocumentReview
+	EmployeeTraining             = internal.EmployeeTraining
+	Employee                     = internal.Employee
+	EmployeeUpdate               = internal.EmployeeUpdate
 	ProblemResponse              = internal.ProblemResponse
 )
 
