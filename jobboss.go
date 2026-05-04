@@ -64,6 +64,7 @@ type (
 	JobRequirement               = internal.JobRequirement
 	Material                     = internal.Material
 	NonConformance               = internal.NonConformance
+	OperationCode                = internal.OperationCode
 	ProblemResponse              = internal.ProblemResponse
 )
 
