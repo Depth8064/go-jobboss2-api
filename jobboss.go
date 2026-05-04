@@ -24,6 +24,9 @@ type (
 	Customer                     = internal.Customer
 	CustomerCreate               = internal.CustomerCreate
 	CustomerUpdate               = internal.CustomerUpdate
+	CustomerReturn               = internal.CustomerReturn
+	CustomerReturnLineItem       = internal.CustomerReturnLineItem
+	CustomerReturnRelease        = internal.CustomerReturnRelease
 	Order                        = internal.Order
 	OrderCreate                  = internal.OrderCreate
 	OrderUpdate                  = internal.OrderUpdate
