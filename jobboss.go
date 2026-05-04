@@ -59,6 +59,7 @@ type (
 	EstimateCreate               = internal.EstimateCreate
 	EstimateUpdate               = internal.EstimateUpdate
 	Feedback                     = internal.Feedback
+	GLCode                       = internal.GLCode
 	ProblemResponse              = internal.ProblemResponse
 )
 
