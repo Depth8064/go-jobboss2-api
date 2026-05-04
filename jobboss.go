@@ -48,6 +48,7 @@ type (
 	ContactUpdate                = internal.ContactUpdate
 	CorrectiveAction             = internal.CorrectiveAction
 	CurrencyCode                 = internal.CurrencyCode
+	Department                   = internal.Department
 	ProblemResponse              = internal.ProblemResponse
 )
 
