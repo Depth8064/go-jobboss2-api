@@ -20,7 +20,7 @@ func TestSalesSupportGroups(t *testing.T) {
 		case "/api/v1/reason-codes/1":
 			_ = json.NewEncoder(w).Encode(SingleResponse[ReasonCode]{Data: ReasonCode{UniqueID: 1, Description: "Damaged"}})
 		case "/api/v1/releases":
-			_ = json.NewEncoder(w).Encode(ListResponse[Release]{Data: []Release{{OrderNumber: "SO-1", ReleaseNumber: 1}}})
+			_ = json.NewEncoder(w).Encode(ListResponse[Release]{Data: []Release{{OrderNumber: "SO-1", ItemNumber: 1}}})
 		case "/api/v1/reports":
 			if r.Method != http.MethodPost {
 				w.WriteHeader(http.StatusMethodNotAllowed)
@@ -87,7 +87,7 @@ func TestSalesSupportGroups(t *testing.T) {
 	}
 
 	releases, err := c.GetReleases(context.Background(), nil)
-	if err != nil || len(releases.Data) != 1 || releases.Data[0].ReleaseNumber != 1 {
+	if err != nil || len(releases.Data) != 1 || releases.Data[0].ItemNumber != 1 {
 		t.Fatalf("GetReleases failed: resp=%+v err=%v", releases, err)
 	}
 

@@ -75,7 +75,6 @@ type (
 	Quote                        = internal.Quote
 	QuoteLineItem                = internal.QuoteLineItem
 	ReasonCode                   = internal.ReasonCode
-	Release                      = internal.Release
 	ReportRequest                = internal.ReportRequest
 	ReportStatus                 = internal.ReportStatus
 	Salesperson                  = internal.Salesperson
