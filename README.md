@@ -25,6 +25,8 @@ This module provides a fully featured, typed client for JobBOSS2 endpoints, incl
 - OAuth2 client-credentials token handling
 - Automatic token caching and refresh
 - Automatic token refresh-and-retry on 401 (max 3 total attempts by default)
+- Automatic retry with exponential backoff + jitter for transient errors (5xx, 429, network)
+- Retry-After header support for 429 rate-limit responses
 - Resource-specific API methods for create/read/update/delete workflows
 - Generic `GET`, `POST`, `PATCH`, `DELETE` helpers for direct endpoint access
 - Generic JSON helpers for typed responses
@@ -114,6 +116,33 @@ if result.StatusCode == 204 {
 	fmt.Println(updated.Data.OrderNumber)
 }
 ```
+
+## Retry and Resilience
+
+The client automatically retries transient failures with exponential backoff and jitter.
+
+**Retryable conditions:** network errors, HTTP 429 Too Many Requests, HTTP 5xx server errors.
+
+**Configuration (all optional — sensible defaults apply):**
+
+| Field | Default | Description |
+|---|---|---|
+| `MaxRetries` | `3` | Max retry attempts after the initial request. Set to `-1` to disable. |
+| `RetryBackoffBase` | `500ms` | Starting delay for exponential backoff. |
+| `RetryBackoffMax` | `30s` | Maximum delay cap. |
+
+**Retry-After support:** When the server returns a `429` with a `Retry-After` header (integer seconds or HTTP-date), the client waits exactly that duration before retrying.
+
+```go
+client := jobboss.NewClient(jobboss.Config{
+	// ...
+	MaxRetries:       5,
+	RetryBackoffBase: 250 * time.Millisecond,
+	RetryBackoffMax:  15 * time.Second,
+})
+```
+
+On final failure after all retries, the returned error is an `*APIError`. For `429` responses, `APIError.RetryAfter` holds the raw `Retry-After` header value.
 
 ## Defaults
 

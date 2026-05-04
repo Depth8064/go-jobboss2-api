@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -22,6 +24,9 @@ const (
 	defaultTokenScope            = "openid"
 	defaultTokenEarlyRefreshSkew = 5 * time.Minute
 	defaultMaxAuthRetryOn401     = 2
+	defaultMaxRetries            = 3
+	defaultRetryBackoffBase      = 500 * time.Millisecond
+	defaultRetryBackoffMax       = 30 * time.Second
 )
 
 // Config contains settings for the JobBOSS API client.
@@ -36,7 +41,14 @@ type Config struct {
 	TokenEarlyRefreshSkew time.Duration
 	// MaxAuthRetryOn401 controls retries after the initial request when the API returns 401.
 	MaxAuthRetryOn401 int
-	HTTPClient        *http.Client
+	// MaxRetries is the maximum number of retries for transient errors (5xx, 429, network errors).
+	// Defaults to 3 when zero.
+	MaxRetries int
+	// RetryBackoffBase is the starting delay for exponential backoff. Defaults to 500ms when zero.
+	RetryBackoffBase time.Duration
+	// RetryBackoffMax caps the computed backoff delay. Defaults to 30s when zero.
+	RetryBackoffMax time.Duration
+	HTTPClient      *http.Client
 }
 
 // Client is a low-level JobBOSS API client with OAuth2 bearer-token support.
@@ -53,6 +65,11 @@ type Client struct {
 	mu          sync.RWMutex
 	accessToken string
 	tokenExpiry time.Time
+
+	maxRetries       int
+	retryBackoffBase time.Duration
+	retryBackoffMax  time.Duration
+	sleepFn          func(time.Duration)
 }
 
 // TokenResponse is the OAuth2 token response payload.
@@ -68,6 +85,8 @@ type APIError struct {
 	StatusCode int
 	URL        string
 	Body       string
+	// RetryAfter holds the parsed Retry-After header value when StatusCode == 429.
+	RetryAfter string
 }
 
 func (e *APIError) Error() string {
@@ -116,15 +135,37 @@ func NewClient(cfg Config) *Client {
 		max401Retries = 0
 	}
 
+	maxRetries := cfg.MaxRetries
+	if maxRetries == 0 {
+		maxRetries = defaultMaxRetries
+	}
+	if maxRetries < 0 {
+		maxRetries = 0
+	}
+
+	retryBackoffBase := cfg.RetryBackoffBase
+	if retryBackoffBase <= 0 {
+		retryBackoffBase = defaultRetryBackoffBase
+	}
+
+	retryBackoffMax := cfg.RetryBackoffMax
+	if retryBackoffMax <= 0 {
+		retryBackoffMax = defaultRetryBackoffMax
+	}
+
 	return &Client{
-		baseURL:       baseURL,
-		tokenURL:      tokenURL,
-		clientID:      strings.TrimSpace(cfg.ClientID),
-		clientSecret:  strings.TrimSpace(cfg.ClientSecret),
-		scope:         scope,
-		httpClient:    httpClient,
-		refreshSkew:   refreshSkew,
-		max401Retries: max401Retries,
+		baseURL:          baseURL,
+		tokenURL:         tokenURL,
+		clientID:         strings.TrimSpace(cfg.ClientID),
+		clientSecret:     strings.TrimSpace(cfg.ClientSecret),
+		scope:            scope,
+		httpClient:       httpClient,
+		refreshSkew:      refreshSkew,
+		max401Retries:    max401Retries,
+		maxRetries:       maxRetries,
+		retryBackoffBase: retryBackoffBase,
+		retryBackoffMax:  retryBackoffMax,
+		sleepFn:          time.Sleep,
 	}
 }
 
@@ -206,6 +247,63 @@ func (c *Client) refreshAccessToken(ctx context.Context) (string, error) {
 	c.tokenExpiry = time.Time{}
 	c.mu.Unlock()
 	return c.AccessToken(ctx)
+}
+
+// parseRetryAfter parses the Retry-After header value, which may be an integer
+// number of seconds or an HTTP-date string. Returns 0 if the header is empty or
+// cannot be parsed into a positive future duration.
+func parseRetryAfter(header string) time.Duration {
+	header = strings.TrimSpace(header)
+	if header == "" {
+		return 0
+	}
+	if n, err := strconv.Atoi(header); err == nil && n > 0 {
+		return time.Duration(n) * time.Second
+	}
+	if t, err := http.ParseTime(header); err == nil {
+		if d := time.Until(t); d > 0 {
+			return d
+		}
+	}
+	return 0
+}
+
+// retryableStatus reports whether a status code warrants an automatic retry.
+func retryableStatus(code int) bool {
+	return code == http.StatusTooManyRequests || (code >= 500 && code <= 599)
+}
+
+// retryDelay returns the sleep duration before the next retry attempt.
+// It uses the Retry-After header value when present; otherwise it uses
+// exponential backoff (base * 2^(attempt-1)) with up to 50% random jitter,
+// capped at retryBackoffMax. attempt is 1-based.
+func (c *Client) retryDelay(attempt int, retryAfterHeader string) time.Duration {
+	if ra := parseRetryAfter(retryAfterHeader); ra > 0 {
+		return ra
+	}
+	if attempt <= 0 {
+		attempt = 1
+	}
+	backoff := c.retryBackoffBase
+	for i := 1; i < attempt; i++ {
+		backoff *= 2
+		if backoff >= c.retryBackoffMax {
+			backoff = c.retryBackoffMax
+			break
+		}
+	}
+	if backoff > c.retryBackoffMax {
+		backoff = c.retryBackoffMax
+	}
+	// Add jitter up to half of backoff, but not more than remaining room to max.
+	maxJitter := backoff / 2
+	if room := c.retryBackoffMax - backoff; room < maxJitter {
+		maxJitter = room
+	}
+	if maxJitter <= 0 {
+		return backoff
+	}
+	return backoff + time.Duration(rand.Int63n(int64(maxJitter)+1))
 }
 
 func buildAPIURL(baseURL, endpoint string) (string, error) {
@@ -294,60 +392,84 @@ func (c *Client) doWithStatus(ctx context.Context, method, endpoint string, quer
 		}
 	}
 
-	var token string
-	for attempt := 0; attempt <= c.max401Retries; attempt++ {
-		if attempt == 0 {
-			token, err = c.AccessToken(ctx)
-		} else {
-			token, err = c.refreshAccessToken(ctx)
-		}
-		if err != nil {
-			return nil, 0, err
+	var retryAfterHeader string
+retryLoop:
+	for transientAttempt := 0; transientAttempt <= c.maxRetries; transientAttempt++ {
+		if transientAttempt > 0 {
+			c.sleepFn(c.retryDelay(transientAttempt, retryAfterHeader))
+			retryAfterHeader = ""
 		}
 
-		var requestBody io.Reader
-		if len(bodyBytes) > 0 {
-			requestBody = bytes.NewReader(bodyBytes)
-		}
-
-		req, err := http.NewRequestWithContext(ctx, method, parsedURL.String(), requestBody)
-		if err != nil {
-			return nil, 0, fmt.Errorf("create API request: %w", err)
-		}
-		req.Header.Set("Authorization", "Bearer "+token)
-		req.Header.Set("Accept", "application/json")
-		req.Header.Set("User-Agent", "go-jobboss2-api")
-		if body != nil {
-			req.Header.Set("Content-Type", "application/json")
-		}
-
-		resp, err := c.httpClient.Do(req)
-		if err != nil {
-			return nil, 0, fmt.Errorf("API request failed: %w", err)
-		}
-
-		respBody, readErr := io.ReadAll(io.LimitReader(resp.Body, defaultResponseBodySize))
-		resp.Body.Close()
-		if readErr != nil {
-			return nil, 0, fmt.Errorf("read API response: %w", readErr)
-		}
-
-		if resp.StatusCode == http.StatusUnauthorized && attempt < c.max401Retries {
-			continue
-		}
-
-		if resp.StatusCode >= 400 {
-			return nil, 0, &APIError{
-				StatusCode: resp.StatusCode,
-				URL:        req.URL.String(),
-				Body:       strings.TrimSpace(string(respBody)),
+		var token string
+		for attempt := 0; attempt <= c.max401Retries; attempt++ {
+			if attempt == 0 {
+				token, err = c.AccessToken(ctx)
+			} else {
+				token, err = c.refreshAccessToken(ctx)
 			}
+			if err != nil {
+				return nil, 0, err
+			}
+
+			var requestBody io.Reader
+			if len(bodyBytes) > 0 {
+				requestBody = bytes.NewReader(bodyBytes)
+			}
+
+			req, reqErr := http.NewRequestWithContext(ctx, method, parsedURL.String(), requestBody)
+			if reqErr != nil {
+				return nil, 0, fmt.Errorf("create API request: %w", reqErr)
+			}
+			req.Header.Set("Authorization", "Bearer "+token)
+			req.Header.Set("Accept", "application/json")
+			req.Header.Set("User-Agent", "go-jobboss2-api")
+			if body != nil {
+				req.Header.Set("Content-Type", "application/json")
+			}
+
+			resp, doErr := c.httpClient.Do(req)
+			if doErr != nil {
+				netErr := fmt.Errorf("API request failed: %w", doErr)
+				if transientAttempt < c.maxRetries {
+					continue retryLoop
+				}
+				return nil, 0, netErr
+			}
+
+			respBody, readErr := io.ReadAll(io.LimitReader(resp.Body, defaultResponseBodySize))
+			resp.Body.Close()
+			if readErr != nil {
+				return nil, 0, fmt.Errorf("read API response: %w", readErr)
+			}
+
+			if resp.StatusCode == http.StatusUnauthorized && attempt < c.max401Retries {
+				continue
+			}
+
+			if resp.StatusCode >= 400 {
+				apiErr := &APIError{
+					StatusCode: resp.StatusCode,
+					URL:        req.URL.String(),
+					Body:       strings.TrimSpace(string(respBody)),
+				}
+				if resp.StatusCode == http.StatusTooManyRequests {
+					apiErr.RetryAfter = resp.Header.Get("Retry-After")
+					retryAfterHeader = apiErr.RetryAfter
+				}
+				if retryableStatus(resp.StatusCode) && transientAttempt < c.maxRetries {
+					continue retryLoop
+				}
+				return nil, 0, apiErr
+			}
+
+			return respBody, resp.StatusCode, nil
 		}
 
-		return respBody, resp.StatusCode, nil
+		return nil, 0, fmt.Errorf("request failed after authentication retries")
 	}
 
-	return nil, 0, fmt.Errorf("request failed after authentication retries")
+	// All transient retry attempts exhausted.
+	return nil, 0, fmt.Errorf("request failed after %d retries", c.maxRetries)
 }
 
 func (c *Client) Get(ctx context.Context, endpoint string, query url.Values) ([]byte, error) {

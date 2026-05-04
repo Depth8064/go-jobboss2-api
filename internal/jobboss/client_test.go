@@ -376,6 +376,13 @@ func TestDoErrorBranches(t *testing.T) {
 			t.Fatalf("expected authentication retries fallback error, got %v", err)
 		}
 	})
+
+	t.Run("exhausted transient retry loop fallback", func(t *testing.T) {
+		c := &Client{baseURL: "https://api.test", httpClient: &http.Client{}, maxRetries: -1}
+		if _, err := c.Do(context.Background(), http.MethodGet, "/x", nil, nil); err == nil || !strings.Contains(err.Error(), "retries") {
+			t.Fatalf("expected transient retries fallback error, got %v", err)
+		}
+	})
 }
 
 func TestPatchNoContentJSONAndPatchJSONEmptyBody(t *testing.T) {
@@ -446,4 +453,361 @@ func TestPatchNoContentJSONAndPatchJSONEmptyBody(t *testing.T) {
 	if parsed.Data.Value != "ok" {
 		t.Fatalf("unexpected PatchJSON parsed value: %+v", parsed)
 	}
+}
+
+func TestNewClientRetryConfig(t *testing.T) {
+	// Non-default values should be respected.
+	c := NewClient(Config{
+		MaxRetries:       5,
+		RetryBackoffBase: 200 * time.Millisecond,
+		RetryBackoffMax:  10 * time.Second,
+	})
+	if c.maxRetries != 5 {
+		t.Fatalf("expected maxRetries=5, got %d", c.maxRetries)
+	}
+	if c.retryBackoffBase != 200*time.Millisecond {
+		t.Fatalf("expected retryBackoffBase=200ms, got %v", c.retryBackoffBase)
+	}
+	if c.retryBackoffMax != 10*time.Second {
+		t.Fatalf("expected retryBackoffMax=10s, got %v", c.retryBackoffMax)
+	}
+
+	// MaxRetries: 0 → uses default.
+	c0 := NewClient(Config{})
+	if c0.maxRetries != defaultMaxRetries {
+		t.Fatalf("expected maxRetries=%d for zero config, got %d", defaultMaxRetries, c0.maxRetries)
+	}
+
+	// MaxRetries: -1 → disabled (0 retries, 1 attempt total).
+	cNeg := NewClient(Config{MaxRetries: -1})
+	if cNeg.maxRetries != 0 {
+		t.Fatalf("expected maxRetries=0 for negative input, got %d", cNeg.maxRetries)
+	}
+}
+
+func TestParseRetryAfter(t *testing.T) {
+	if parseRetryAfter("") != 0 {
+		t.Fatal("expected 0 for empty header")
+	}
+	if parseRetryAfter("   ") != 0 {
+		t.Fatal("expected 0 for whitespace-only header")
+	}
+	if parseRetryAfter("0") != 0 {
+		t.Fatal("expected 0 for zero seconds (not positive)")
+	}
+	if d := parseRetryAfter("30"); d != 30*time.Second {
+		t.Fatalf("expected 30s for integer header, got %v", d)
+	}
+	// HTTP-date in the future.
+	future := time.Now().Add(10 * time.Minute).UTC().Format(http.TimeFormat)
+	if d := parseRetryAfter(future); d <= 0 {
+		t.Fatalf("expected positive duration for future HTTP-date, got %v", d)
+	}
+	// HTTP-date in the past.
+	past := time.Now().Add(-10 * time.Minute).UTC().Format(http.TimeFormat)
+	if d := parseRetryAfter(past); d != 0 {
+		t.Fatalf("expected 0 for past HTTP-date, got %v", d)
+	}
+	// Unparseable string.
+	if parseRetryAfter("not-a-date") != 0 {
+		t.Fatal("expected 0 for unparseable header")
+	}
+}
+
+func TestRetryableStatus(t *testing.T) {
+	notRetryable := []int{200, 201, 204, 400, 401, 403, 404, 600}
+	for _, code := range notRetryable {
+		if retryableStatus(code) {
+			t.Errorf("expected status %d to not be retryable", code)
+		}
+	}
+	isRetryable := []int{429, 500, 502, 503, 504, 599}
+	for _, code := range isRetryable {
+		if !retryableStatus(code) {
+			t.Errorf("expected status %d to be retryable", code)
+		}
+	}
+}
+
+func TestRetryDelay(t *testing.T) {
+	// 1a: Retry-After header takes precedence over backoff.
+	c := &Client{retryBackoffBase: 100 * time.Millisecond, retryBackoffMax: 500 * time.Millisecond}
+	if d := c.retryDelay(1, "5"); d != 5*time.Second {
+		t.Fatalf("expected 5s from Retry-After header, got %v", d)
+	}
+
+	// 1b + 3b (loop skipped) + 5b (base < max) + 6b (room > maxJitter) + 7b (maxJitter > 0):
+	// base=100ms, max=500ms, attempt=1 → backoff=100ms, room=400ms, maxJitter=50ms → [100ms, 150ms].
+	for i := 0; i < 20; i++ {
+		d := c.retryDelay(1, "")
+		if d < 100*time.Millisecond || d > 150*time.Millisecond {
+			t.Fatalf("attempt 1 delay %v outside [100ms, 150ms]", d)
+		}
+	}
+
+	// 2a: attempt <= 0 clamped to 1 — same result range.
+	for i := 0; i < 20; i++ {
+		d := c.retryDelay(0, "")
+		if d < 100*time.Millisecond || d > 150*time.Millisecond {
+			t.Fatalf("attempt 0 (clamped) delay %v outside [100ms, 150ms]", d)
+		}
+	}
+
+	// 3a + 4b: loop entered, backoff doubles but stays below max.
+	// base=100ms, max=500ms, attempt=2 → backoff=200ms, room=300ms, maxJitter=100ms → [200ms, 300ms].
+	for i := 0; i < 20; i++ {
+		d := c.retryDelay(2, "")
+		if d < 200*time.Millisecond || d > 300*time.Millisecond {
+			t.Fatalf("attempt 2 delay %v outside [200ms, 300ms]", d)
+		}
+	}
+
+	// 3a + 4a + 6a + 7a: loop hits max cap → room=0 → maxJitter=0 → return exactly backoff.
+	// base=100ms, max=200ms, attempt=3: 100→200→break. room=0 → maxJitter=0 → 200ms.
+	c2 := &Client{retryBackoffBase: 100 * time.Millisecond, retryBackoffMax: 200 * time.Millisecond}
+	if d := c2.retryDelay(3, ""); d != 200*time.Millisecond {
+		t.Fatalf("expected exactly 200ms when backoff saturates max, got %v", d)
+	}
+
+	// 5a: base > max → post-loop cap (branch 5a), then room=0 → 7a → return max.
+	// base=300ms, max=200ms, attempt=1: backoff=300ms > 200ms → cap to 200ms → return 200ms.
+	c3 := &Client{retryBackoffBase: 300 * time.Millisecond, retryBackoffMax: 200 * time.Millisecond}
+	if d := c3.retryDelay(1, ""); d != 200*time.Millisecond {
+		t.Fatalf("expected 200ms when base > max, got %v", d)
+	}
+
+	// 6a (room < maxJitter) + 7b (maxJitter > 0):
+	// base=180ms, max=200ms, attempt=1 → backoff=180ms, room=20ms, maxJitter=min(90ms,20ms)=20ms → [180ms, 200ms].
+	c4 := &Client{retryBackoffBase: 180 * time.Millisecond, retryBackoffMax: 200 * time.Millisecond}
+	for i := 0; i < 20; i++ {
+		d := c4.retryDelay(1, "")
+		if d < 180*time.Millisecond || d > 200*time.Millisecond {
+			t.Fatalf("close-to-max delay %v outside [180ms, 200ms]", d)
+		}
+	}
+}
+
+func TestTransientRetry(t *testing.T) {
+	t.Run("retries on 5xx and succeeds", func(t *testing.T) {
+		callCount := 0
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/oauth2/api-user/token" {
+				_ = json.NewEncoder(w).Encode(TokenResponse{AccessToken: "tok", ExpiresIn: 3600})
+				return
+			}
+			callCount++
+			if callCount == 1 {
+				w.WriteHeader(http.StatusServiceUnavailable)
+				return
+			}
+			_, _ = w.Write([]byte(`"ok"`))
+		}))
+		defer ts.Close()
+
+		var slept []time.Duration
+		c := NewClient(Config{
+			BaseURL:          ts.URL,
+			TokenURL:         ts.URL + "/oauth2/api-user/token",
+			ClientID:         "id",
+			ClientSecret:     "secret",
+			HTTPClient:       ts.Client(),
+			MaxRetries:       2,
+			RetryBackoffBase: time.Nanosecond,
+			RetryBackoffMax:  time.Millisecond,
+		})
+		c.sleepFn = func(d time.Duration) { slept = append(slept, d) }
+
+		if _, err := c.Get(context.Background(), "/data", nil); err != nil {
+			t.Fatalf("expected success after retry, got %v", err)
+		}
+		if len(slept) != 1 {
+			t.Fatalf("expected 1 sleep call, got %d", len(slept))
+		}
+	})
+
+	t.Run("retries on 429 with Retry-After and succeeds", func(t *testing.T) {
+		callCount := 0
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/oauth2/api-user/token" {
+				_ = json.NewEncoder(w).Encode(TokenResponse{AccessToken: "tok", ExpiresIn: 3600})
+				return
+			}
+			callCount++
+			if callCount == 1 {
+				w.Header().Set("Retry-After", "7")
+				w.WriteHeader(http.StatusTooManyRequests)
+				return
+			}
+			_, _ = w.Write([]byte(`"done"`))
+		}))
+		defer ts.Close()
+
+		var slept []time.Duration
+		c := NewClient(Config{
+			BaseURL:      ts.URL,
+			TokenURL:     ts.URL + "/oauth2/api-user/token",
+			ClientID:     "id",
+			ClientSecret: "secret",
+			HTTPClient:   ts.Client(),
+			MaxRetries:   2,
+		})
+		c.sleepFn = func(d time.Duration) { slept = append(slept, d) }
+
+		if _, err := c.Get(context.Background(), "/data", nil); err != nil {
+			t.Fatalf("expected success after 429 retry, got %v", err)
+		}
+		if len(slept) != 1 || slept[0] != 7*time.Second {
+			t.Fatalf("expected one 7s sleep from Retry-After, got %v", slept)
+		}
+	})
+
+	t.Run("retries on network error and succeeds", func(t *testing.T) {
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/oauth2/api-user/token" {
+				_ = json.NewEncoder(w).Encode(TokenResponse{AccessToken: "tok", ExpiresIn: 3600})
+				return
+			}
+			_, _ = w.Write([]byte(`"ok"`))
+		}))
+		defer ts.Close()
+
+		apiCalls := 0
+		var slept []time.Duration
+		transport := roundTripFunc(func(r *http.Request) (*http.Response, error) {
+			if r.URL.Path == "/oauth2/api-user/token" {
+				return ts.Client().Transport.RoundTrip(r)
+			}
+			apiCalls++
+			if apiCalls <= 2 {
+				return nil, errors.New("network down")
+			}
+			return ts.Client().Transport.RoundTrip(r)
+		})
+
+		c := NewClient(Config{
+			BaseURL:          ts.URL,
+			TokenURL:         ts.URL + "/oauth2/api-user/token",
+			ClientID:         "id",
+			ClientSecret:     "secret",
+			HTTPClient:       &http.Client{Transport: transport},
+			MaxRetries:       3,
+			RetryBackoffBase: time.Nanosecond,
+			RetryBackoffMax:  time.Millisecond,
+		})
+		c.sleepFn = func(d time.Duration) { slept = append(slept, d) }
+
+		if _, err := c.Get(context.Background(), "/data", nil); err != nil {
+			t.Fatalf("expected success after network retries, got %v", err)
+		}
+		if apiCalls != 3 {
+			t.Fatalf("expected 3 API calls, got %d", apiCalls)
+		}
+		if len(slept) != 2 {
+			t.Fatalf("expected 2 sleep calls, got %d", len(slept))
+		}
+	})
+
+	t.Run("exhausts retries on persistent 5xx", func(t *testing.T) {
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/oauth2/api-user/token" {
+				_ = json.NewEncoder(w).Encode(TokenResponse{AccessToken: "tok", ExpiresIn: 3600})
+				return
+			}
+			w.WriteHeader(http.StatusInternalServerError)
+		}))
+		defer ts.Close()
+
+		sleepCalls := 0
+		c := NewClient(Config{
+			BaseURL:          ts.URL,
+			TokenURL:         ts.URL + "/oauth2/api-user/token",
+			ClientID:         "id",
+			ClientSecret:     "secret",
+			HTTPClient:       ts.Client(),
+			MaxRetries:       2,
+			RetryBackoffBase: time.Nanosecond,
+			RetryBackoffMax:  time.Millisecond,
+		})
+		c.sleepFn = func(d time.Duration) { sleepCalls++ }
+
+		if _, err := c.Get(context.Background(), "/data", nil); err == nil {
+			t.Fatal("expected error after exhausted retries")
+		}
+		if sleepCalls != 2 {
+			t.Fatalf("expected 2 sleep calls for 2 retries, got %d", sleepCalls)
+		}
+	})
+
+	t.Run("exhausts retries on persistent network error", func(t *testing.T) {
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/oauth2/api-user/token" {
+				_ = json.NewEncoder(w).Encode(TokenResponse{AccessToken: "tok", ExpiresIn: 3600})
+				return
+			}
+		}))
+		defer ts.Close()
+
+		apiCalls := 0
+		transport := roundTripFunc(func(r *http.Request) (*http.Response, error) {
+			if r.URL.Path == "/oauth2/api-user/token" {
+				return ts.Client().Transport.RoundTrip(r)
+			}
+			apiCalls++
+			return nil, errors.New("always down")
+		})
+
+		c := NewClient(Config{
+			BaseURL:          ts.URL,
+			TokenURL:         ts.URL + "/oauth2/api-user/token",
+			ClientID:         "id",
+			ClientSecret:     "secret",
+			HTTPClient:       &http.Client{Transport: transport},
+			MaxRetries:       2,
+			RetryBackoffBase: time.Nanosecond,
+			RetryBackoffMax:  time.Millisecond,
+		})
+		sleepCalls := 0
+		c.sleepFn = func(d time.Duration) { sleepCalls++ }
+
+		if _, err := c.Get(context.Background(), "/data", nil); err == nil {
+			t.Fatal("expected error after exhausted network retries")
+		}
+		if apiCalls != 3 {
+			t.Fatalf("expected 3 API calls (1 initial + 2 retries), got %d", apiCalls)
+		}
+		if sleepCalls != 2 {
+			t.Fatalf("expected 2 sleep calls, got %d", sleepCalls)
+		}
+	})
+
+	t.Run("429 RetryAfter field set on final error", func(t *testing.T) {
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/oauth2/api-user/token" {
+				_ = json.NewEncoder(w).Encode(TokenResponse{AccessToken: "tok", ExpiresIn: 3600})
+				return
+			}
+			w.Header().Set("Retry-After", "60")
+			w.WriteHeader(http.StatusTooManyRequests)
+		}))
+		defer ts.Close()
+
+		c := NewClient(Config{
+			BaseURL:      ts.URL,
+			TokenURL:     ts.URL + "/oauth2/api-user/token",
+			ClientID:     "id",
+			ClientSecret: "secret",
+			HTTPClient:   ts.Client(),
+			MaxRetries:   -1, // disabled → 0 retries, 1 attempt
+		})
+		c.sleepFn = func(d time.Duration) {}
+
+		_, err := c.Get(context.Background(), "/data", nil)
+		var apiErr *APIError
+		if !errors.As(err, &apiErr) {
+			t.Fatalf("expected *APIError, got %T: %v", err, err)
+		}
+		if apiErr.RetryAfter != "60" {
+			t.Fatalf("expected RetryAfter=%q, got %q", "60", apiErr.RetryAfter)
+		}
+	})
 }
