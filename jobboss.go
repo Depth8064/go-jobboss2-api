@@ -68,6 +68,7 @@ type (
 	PackingList                  = internal.PackingList
 	PackingListLineItem          = internal.PackingListLineItem
 	ProblemResponse              = internal.ProblemResponse
+	ProductCode                  = internal.ProductCode
 	PurchaseOrder                = internal.PurchaseOrder
 	PurchaseOrderLineItem        = internal.PurchaseOrderLineItem
 	PurchaseOrderRelease         = internal.PurchaseOrderRelease
