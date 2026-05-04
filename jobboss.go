@@ -24,6 +24,15 @@ type (
 	Customer                   = internal.Customer
 	CustomerCreate             = internal.CustomerCreate
 	CustomerUpdate             = internal.CustomerUpdate
+	Order                      = internal.Order
+	OrderCreate                = internal.OrderCreate
+	OrderUpdate                = internal.OrderUpdate
+	OrderLineItem              = internal.OrderLineItem
+	OrderLineItemCreate        = internal.OrderLineItemCreate
+	OrderRouting               = internal.OrderRouting
+	OrderRoutingCreate         = internal.OrderRoutingCreate
+	Release                    = internal.Release
+	ReleaseCreate              = internal.ReleaseCreate
 	ProblemResponse            = internal.ProblemResponse
 )
 
