@@ -1,4 +1,4 @@
-package jobboss_test
+package jobboss
 
 import (
 	"context"
@@ -7,20 +7,17 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
-	"testing"
-
-	jobboss "go-jobboss2-api"
-)
+	"testing")
 
 func TestAPIErrorError(t *testing.T) {
-	err := (&jobboss.APIError{StatusCode: 400, URL: "https://x", Body: "bad"}).Error()
+	err := (&APIError{StatusCode: 400, URL: "https://x", Body: "bad"}).Error()
 	if !strings.Contains(err, "400") || !strings.Contains(err, "https://x") || !strings.Contains(err, "bad") {
 		t.Fatalf("unexpected error string: %s", err)
 	}
 }
 
 func TestNewClientDefaultsAndGetters(t *testing.T) {
-	c := jobboss.NewClient(jobboss.Config{})
+	c := NewClient(Config{})
 	if c.BaseURL() != "https://api-jb2.integrations.ecimanufacturing.com" {
 		t.Fatalf("unexpected default base URL: %q", c.BaseURL())
 	}
@@ -40,7 +37,7 @@ func TestClientMethodsAndJSONHelpers(t *testing.T) {
 			if tokenCalls > 1 {
 				tok = "token-2"
 			}
-			_ = json.NewEncoder(w).Encode(jobboss.TokenResponse{AccessToken: tok, ExpiresIn: 3600})
+			_ = json.NewEncoder(w).Encode(TokenResponse{AccessToken: tok, ExpiresIn: 3600})
 		case "/retry":
 			apiCalls++
 			if r.Header.Get("Authorization") != "Bearer token-2" {
@@ -73,7 +70,7 @@ func TestClientMethodsAndJSONHelpers(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	c := jobboss.NewClient(jobboss.Config{
+	c := NewClient(Config{
 		BaseURL:           ts.URL,
 		TokenURL:          ts.URL + "/oauth2/api-user/token",
 		ClientID:          "id",
@@ -105,33 +102,33 @@ func TestClientMethodsAndJSONHelpers(t *testing.T) {
 	type payload struct {
 		Value string `json:"value"`
 	}
-	outG, err := jobboss.GetJSON[payload](context.Background(), c, "/g", nil)
+	outG, err := GetJSON[payload](context.Background(), c, "/g", nil)
 	if err != nil || outG.Value != "g" {
 		t.Fatalf("GetJSON failed: out=%+v err=%v", outG, err)
 	}
-	if _, err := jobboss.GetJSON[payload](context.Background(), c, "/bad", nil); err == nil {
+	if _, err := GetJSON[payload](context.Background(), c, "/bad", nil); err == nil {
 		t.Fatalf("expected GetJSON decode error")
 	}
-	if _, err := jobboss.GetJSON[payload](context.Background(), c, "/missing", nil); err == nil {
+	if _, err := GetJSON[payload](context.Background(), c, "/missing", nil); err == nil {
 		t.Fatalf("expected GetJSON request error")
 	}
 
-	outP, err := jobboss.PostJSON[map[string]string, payload](context.Background(), c, "/p", map[string]string{"x": "1"})
+	outP, err := PostJSON[map[string]string, payload](context.Background(), c, "/p", map[string]string{"x": "1"})
 	if err != nil || outP.Value != "p" {
 		t.Fatalf("PostJSON failed: out=%+v err=%v", outP, err)
 	}
-	if _, err := jobboss.PostJSON[map[string]string, payload](context.Background(), c, "/bad", map[string]string{}); err == nil {
+	if _, err := PostJSON[map[string]string, payload](context.Background(), c, "/bad", map[string]string{}); err == nil {
 		t.Fatalf("expected PostJSON decode error")
 	}
 
-	outPt, err := jobboss.PatchJSON[map[string]string, payload](context.Background(), c, "/pt", map[string]string{"x": "1"})
+	outPt, err := PatchJSON[map[string]string, payload](context.Background(), c, "/pt", map[string]string{"x": "1"})
 	if err != nil || outPt.Value != "pt" {
 		t.Fatalf("PatchJSON failed: out=%+v err=%v", outPt, err)
 	}
-	if _, err := jobboss.PatchJSON[map[string]string, payload](context.Background(), c, "/bad", map[string]string{}); err == nil {
+	if _, err := PatchJSON[map[string]string, payload](context.Background(), c, "/bad", map[string]string{}); err == nil {
 		t.Fatalf("expected PatchJSON decode error")
 	}
-	if _, err := jobboss.PatchJSON[map[string]string, payload](context.Background(), c, "/missing", map[string]string{}); err == nil {
+	if _, err := PatchJSON[map[string]string, payload](context.Background(), c, "/missing", map[string]string{}); err == nil {
 		t.Fatalf("expected PatchJSON request error")
 	}
 
@@ -144,3 +141,5 @@ func TestClientMethodsAndJSONHelpers(t *testing.T) {
 		t.Fatalf("expected request creation error")
 	}
 }
+
+

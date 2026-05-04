@@ -1,4 +1,4 @@
-package jobboss_test
+package jobboss
 
 import (
 	"context"
@@ -7,10 +7,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
-	"testing"
-
-	jobboss "go-jobboss2-api"
-)
+	"testing")
 
 func TestCustomersSection(t *testing.T) {
 	active := true
@@ -20,19 +17,19 @@ func TestCustomersSection(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/oauth2/api-user/token":
-			_ = json.NewEncoder(w).Encode(jobboss.TokenResponse{AccessToken: "tok", ExpiresIn: 3600})
+			_ = json.NewEncoder(w).Encode(TokenResponse{AccessToken: "tok", ExpiresIn: 3600})
 		case "/api/v1/customers":
 			switch r.Method {
 			case http.MethodGet:
 				if r.URL.Query().Get("fields") == "" {
 					t.Fatalf("expected fields query")
 				}
-				_ = json.NewEncoder(w).Encode(jobboss.ListResponse[jobboss.Customer]{
-					Data: []jobboss.Customer{{CustomerCode: "ACME", CustomerName: "Acme", Active: true}},
+				_ = json.NewEncoder(w).Encode(ListResponse[Customer]{
+					Data: []Customer{{CustomerCode: "ACME", CustomerName: "Acme", Active: true}},
 				})
 			case http.MethodPost:
-				_ = json.NewEncoder(w).Encode(jobboss.SingleResponse[jobboss.Customer]{
-					Data: jobboss.Customer{CustomerCode: "ACME", CustomerName: "Acme", Active: true},
+				_ = json.NewEncoder(w).Encode(SingleResponse[Customer]{
+					Data: Customer{CustomerCode: "ACME", CustomerName: "Acme", Active: true},
 				})
 			default:
 				w.WriteHeader(http.StatusMethodNotAllowed)
@@ -40,12 +37,12 @@ func TestCustomersSection(t *testing.T) {
 		case "/api/v1/customers/ACME":
 			switch r.Method {
 			case http.MethodGet:
-				_ = json.NewEncoder(w).Encode(jobboss.SingleResponse[jobboss.Customer]{
-					Data: jobboss.Customer{CustomerCode: "ACME", CustomerName: "Acme", Active: true},
+				_ = json.NewEncoder(w).Encode(SingleResponse[Customer]{
+					Data: Customer{CustomerCode: "ACME", CustomerName: "Acme", Active: true},
 				})
 			case http.MethodPatch:
-				_ = json.NewEncoder(w).Encode(jobboss.SingleResponse[jobboss.Customer]{
-					Data: jobboss.Customer{CustomerCode: "ACME", CustomerName: "Acme Industries", Active: true, Phone: "555-0100"},
+				_ = json.NewEncoder(w).Encode(SingleResponse[Customer]{
+					Data: Customer{CustomerCode: "ACME", CustomerName: "Acme Industries", Active: true, Phone: "555-0100"},
 				})
 			default:
 				w.WriteHeader(http.StatusMethodNotAllowed)
@@ -56,7 +53,7 @@ func TestCustomersSection(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	c := jobboss.NewClient(jobboss.Config{
+	c := NewClient(Config{
 		BaseURL:           ts.URL,
 		TokenURL:          ts.URL + "/oauth2/api-user/token",
 		ClientID:          "id",
@@ -88,7 +85,7 @@ func TestCustomersSection(t *testing.T) {
 		t.Fatalf("expected empty customer code error, got %v", err)
 	}
 
-	createResp, err := c.CreateCustomer(context.Background(), jobboss.CustomerCreate{
+	createResp, err := c.CreateCustomer(context.Background(), CustomerCreate{
 		CustomerCode: "ACME",
 		CustomerName: "Acme",
 		Active:       &active,
@@ -100,7 +97,7 @@ func TestCustomersSection(t *testing.T) {
 		t.Fatalf("unexpected created customer: %+v", createResp)
 	}
 
-	updateResp, err := c.UpdateCustomer(context.Background(), "ACME", jobboss.CustomerUpdate{
+	updateResp, err := c.UpdateCustomer(context.Background(), "ACME", CustomerUpdate{
 		CustomerName: &name,
 		Phone:        &phone,
 	})
@@ -111,8 +108,10 @@ func TestCustomersSection(t *testing.T) {
 		t.Fatalf("unexpected updated customer: %+v", updateResp)
 	}
 
-	_, err = c.UpdateCustomer(context.Background(), "", jobboss.CustomerUpdate{})
+	_, err = c.UpdateCustomer(context.Background(), "", CustomerUpdate{})
 	if err == nil || !strings.Contains(err.Error(), "customer code is required") {
 		t.Fatalf("expected empty customer code update error, got %v", err)
 	}
 }
+
+
