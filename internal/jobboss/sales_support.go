@@ -19,19 +19,6 @@ type ReasonCode struct {
 	LastModUser string `json:"lastModUser,omitempty"`
 }
 
-// Release models a release payload.
-type Release struct {
-	UniqueID      int     `json:"uniqueID,omitempty"`
-	OrderNumber   string  `json:"orderNumber,omitempty"`
-	ReleaseNumber int     `json:"releaseNumber,omitempty"`
-	PartNumber    string  `json:"partNumber,omitempty"`
-	Quantity      float64 `json:"quantity,omitempty"`
-	DueDate       string  `json:"dueDate,omitempty"`
-	Status        string  `json:"status,omitempty"`
-	LastModDate   string  `json:"lastModDate,omitempty"`
-	LastModUser   string  `json:"lastModUser,omitempty"`
-}
-
 // ReportRequest models a report request payload.
 type ReportRequest struct {
 	ReportName   string                 `json:"reportName,omitempty"`
