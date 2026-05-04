@@ -33,6 +33,8 @@ type (
 	OrderRoutingCreate         = internal.OrderRoutingCreate
 	Release                    = internal.Release
 	ReleaseCreate              = internal.ReleaseCreate
+	ARInvoiceDetail            = internal.ARInvoiceDetail
+	ARInvoice                  = internal.ARInvoice
 	ProblemResponse            = internal.ProblemResponse
 )
 
