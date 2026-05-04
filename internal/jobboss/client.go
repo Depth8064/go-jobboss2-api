@@ -151,10 +151,6 @@ func (c *Client) AccessToken(ctx context.Context) (string, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	if c.accessToken != "" && time.Now().Before(c.tokenExpiry) {
-		return c.accessToken, nil
-	}
-
 	if c.tokenURL == "" || c.clientID == "" || c.clientSecret == "" {
 		return "", fmt.Errorf("missing token configuration (token URL / client id / client secret)")
 	}
@@ -270,10 +266,8 @@ func (c *Client) Do(ctx context.Context, method, endpoint string, query url.Valu
 		return nil, err
 	}
 
-	parsedURL, err := url.Parse(requestURL)
-	if err != nil {
-		return nil, fmt.Errorf("parse request URL: %w", err)
-	}
+	// buildAPIURL already validates and normalizes URL input.
+	parsedURL, _ := url.Parse(requestURL)
 	if query != nil {
 		q := parsedURL.Query()
 		for key, values := range query {
