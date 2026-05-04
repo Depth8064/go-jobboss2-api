@@ -10,32 +10,37 @@ import (
 
 // Public type aliases re-exported from internal implementation.
 type (
-	Config                     = internal.Config
-	Client                     = internal.Client
-	TokenResponse              = internal.TokenResponse
-	APIError                   = internal.APIError
-	FilterOp                   = internal.FilterOp
-	DeviceCredentialType       = internal.DeviceCredentialType
-	DeviceCreateModel          = internal.DeviceCreateModel
-	DeviceCreateResponse       = internal.DeviceCreateResponse
-	DeviceActivateRequestModel = internal.DeviceActivateRequestModel
-	DeviceCredentialModel      = internal.DeviceCredentialModel
-	DeviceActivatedResponse    = internal.DeviceActivatedResponse
-	Customer                   = internal.Customer
-	CustomerCreate             = internal.CustomerCreate
-	CustomerUpdate             = internal.CustomerUpdate
-	Order                      = internal.Order
-	OrderCreate                = internal.OrderCreate
-	OrderUpdate                = internal.OrderUpdate
-	OrderLineItem              = internal.OrderLineItem
-	OrderLineItemCreate        = internal.OrderLineItemCreate
-	OrderRouting               = internal.OrderRouting
-	OrderRoutingCreate         = internal.OrderRoutingCreate
-	Release                    = internal.Release
-	ReleaseCreate              = internal.ReleaseCreate
-	ARInvoiceDetail            = internal.ARInvoiceDetail
-	ARInvoice                  = internal.ARInvoice
-	ProblemResponse            = internal.ProblemResponse
+	Config                       = internal.Config
+	Client                       = internal.Client
+	TokenResponse                = internal.TokenResponse
+	APIError                     = internal.APIError
+	FilterOp                     = internal.FilterOp
+	DeviceCredentialType         = internal.DeviceCredentialType
+	DeviceCreateModel            = internal.DeviceCreateModel
+	DeviceCreateResponse         = internal.DeviceCreateResponse
+	DeviceActivateRequestModel   = internal.DeviceActivateRequestModel
+	DeviceCredentialModel        = internal.DeviceCredentialModel
+	DeviceActivatedResponse      = internal.DeviceActivatedResponse
+	Customer                     = internal.Customer
+	CustomerCreate               = internal.CustomerCreate
+	CustomerUpdate               = internal.CustomerUpdate
+	Order                        = internal.Order
+	OrderCreate                  = internal.OrderCreate
+	OrderUpdate                  = internal.OrderUpdate
+	OrderLineItem                = internal.OrderLineItem
+	OrderLineItemCreate          = internal.OrderLineItemCreate
+	OrderRouting                 = internal.OrderRouting
+	OrderRoutingCreate           = internal.OrderRoutingCreate
+	Release                      = internal.Release
+	ReleaseCreate                = internal.ReleaseCreate
+	ARInvoiceDetail              = internal.ARInvoiceDetail
+	ARInvoice                    = internal.ARInvoice
+	AttendanceTicketDetail       = internal.AttendanceTicketDetail
+	AttendanceTicketDetailCreate = internal.AttendanceTicketDetailCreate
+	AttendanceTicketDetailUpdate = internal.AttendanceTicketDetailUpdate
+	AttendanceTicket             = internal.AttendanceTicket
+	AttendanceTicketCreate       = internal.AttendanceTicketCreate
+	ProblemResponse              = internal.ProblemResponse
 )
 
 type ListResponse[T any] struct {
