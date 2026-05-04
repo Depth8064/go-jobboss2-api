@@ -21,6 +21,9 @@ type (
 	DeviceActivateRequestModel = internal.DeviceActivateRequestModel
 	DeviceCredentialModel      = internal.DeviceCredentialModel
 	DeviceActivatedResponse    = internal.DeviceActivatedResponse
+	Customer                   = internal.Customer
+	CustomerCreate             = internal.CustomerCreate
+	CustomerUpdate             = internal.CustomerUpdate
 	ProblemResponse            = internal.ProblemResponse
 )
 
