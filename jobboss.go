@@ -60,6 +60,9 @@ type (
 	EstimateUpdate               = internal.EstimateUpdate
 	Feedback                     = internal.Feedback
 	GLCode                       = internal.GLCode
+	JobMaterial                  = internal.JobMaterial
+	JobRequirement               = internal.JobRequirement
+	Material                     = internal.Material
 	ProblemResponse              = internal.ProblemResponse
 )
 
