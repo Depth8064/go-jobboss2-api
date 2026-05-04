@@ -43,6 +43,9 @@ type (
 	BinLocation                  = internal.BinLocation
 	Company                      = internal.Company
 	CompanyCalendar              = internal.CompanyCalendar
+	Contact                      = internal.Contact
+	ContactCreate                = internal.ContactCreate
+	ContactUpdate                = internal.ContactUpdate
 	ProblemResponse              = internal.ProblemResponse
 )
 
