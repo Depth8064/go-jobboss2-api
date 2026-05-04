@@ -14,27 +14,41 @@ import (
 )
 
 const (
-	defaultHTTPTimeout      = 30 * time.Second
-	defaultResponseBodySize = 10 * 1024 * 1024
-	tokenEarlyRefreshBuffer = 60 * time.Second
+	defaultHTTPTimeout           = 30 * time.Second
+	defaultResponseBodySize      = 10 * 1024 * 1024
+	defaultAPIServerURL          = "https://api-jb2.integrations.ecimanufacturing.com"
+	defaultAuthServerURL         = "https://api-user.integrations.ecimanufacturing.com"
+	defaultTokenEndpointPath     = "/oauth2/api-user/token"
+	defaultTokenScope            = "openid"
+	defaultTokenEarlyRefreshSkew = 5 * time.Minute
+	defaultMaxAuthRetryOn401     = 2
 )
 
 // Config contains settings for the JobBOSS API client.
 type Config struct {
 	BaseURL      string
+	AuthBaseURL  string
 	TokenURL     string
 	ClientID     string
 	ClientSecret string
-	HTTPClient   *http.Client
+	Scope        string
+	// TokenEarlyRefreshSkew controls how long before expiry a token is considered stale.
+	TokenEarlyRefreshSkew time.Duration
+	// MaxAuthRetryOn401 controls retries after the initial request when the API returns 401.
+	MaxAuthRetryOn401 int
+	HTTPClient        *http.Client
 }
 
 // Client is a low-level JobBOSS API client with OAuth2 bearer-token support.
 type Client struct {
-	baseURL      string
-	tokenURL     string
-	clientID     string
-	clientSecret string
-	httpClient   *http.Client
+	baseURL       string
+	tokenURL      string
+	clientID      string
+	clientSecret  string
+	scope         string
+	httpClient    *http.Client
+	refreshSkew   time.Duration
+	max401Retries int
 
 	mu          sync.RWMutex
 	accessToken string
@@ -67,13 +81,61 @@ func NewClient(cfg Config) *Client {
 		httpClient = &http.Client{Timeout: defaultHTTPTimeout}
 	}
 
-	return &Client{
-		baseURL:      strings.TrimSpace(cfg.BaseURL),
-		tokenURL:     strings.TrimSpace(cfg.TokenURL),
-		clientID:     strings.TrimSpace(cfg.ClientID),
-		clientSecret: strings.TrimSpace(cfg.ClientSecret),
-		httpClient:   httpClient,
+	baseURL := strings.TrimSpace(cfg.BaseURL)
+	if baseURL == "" {
+		baseURL = defaultAPIServerURL
 	}
+
+	tokenURL := strings.TrimSpace(cfg.TokenURL)
+	if tokenURL == "" {
+		authBaseURL := strings.TrimSpace(cfg.AuthBaseURL)
+		if authBaseURL == "" {
+			authBaseURL = defaultAuthServerURL
+		}
+		resolvedTokenURL, err := buildAPIURL(authBaseURL, defaultTokenEndpointPath)
+		if err == nil {
+			tokenURL = resolvedTokenURL
+		}
+	}
+
+	scope := strings.TrimSpace(cfg.Scope)
+	if scope == "" {
+		scope = defaultTokenScope
+	}
+
+	refreshSkew := cfg.TokenEarlyRefreshSkew
+	if refreshSkew <= 0 {
+		refreshSkew = defaultTokenEarlyRefreshSkew
+	}
+
+	max401Retries := cfg.MaxAuthRetryOn401
+	if max401Retries == 0 {
+		max401Retries = defaultMaxAuthRetryOn401
+	}
+	if max401Retries < 0 {
+		max401Retries = 0
+	}
+
+	return &Client{
+		baseURL:       baseURL,
+		tokenURL:      tokenURL,
+		clientID:      strings.TrimSpace(cfg.ClientID),
+		clientSecret:  strings.TrimSpace(cfg.ClientSecret),
+		scope:         scope,
+		httpClient:    httpClient,
+		refreshSkew:   refreshSkew,
+		max401Retries: max401Retries,
+	}
+}
+
+// BaseURL returns the configured JobBOSS API base URL.
+func (c *Client) BaseURL() string {
+	return c.baseURL
+}
+
+// TokenURL returns the configured auth token URL.
+func (c *Client) TokenURL() string {
+	return c.tokenURL
 }
 
 // AccessToken returns a valid bearer token, refreshing it when required.
@@ -101,7 +163,7 @@ func (c *Client) AccessToken(ctx context.Context) (string, error) {
 	form.Set("grant_type", "client_credentials")
 	form.Set("client_id", c.clientID)
 	form.Set("client_secret", c.clientSecret)
-	form.Set("scope", "openid")
+	form.Set("scope", c.scope)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.tokenURL, strings.NewReader(form.Encode()))
 	if err != nil {
@@ -132,7 +194,7 @@ func (c *Client) AccessToken(ctx context.Context) (string, error) {
 	if expiresIn <= 0 {
 		expiresIn = 15 * time.Minute
 	}
-	expiry := time.Now().Add(expiresIn - tokenEarlyRefreshBuffer)
+	expiry := time.Now().Add(expiresIn - c.refreshSkew)
 	if expiry.Before(time.Now()) {
 		expiry = time.Now().Add(expiresIn / 2)
 	}
@@ -140,6 +202,14 @@ func (c *Client) AccessToken(ctx context.Context) (string, error) {
 	c.accessToken = tokenResp.AccessToken
 	c.tokenExpiry = expiry
 	return c.accessToken, nil
+}
+
+func (c *Client) refreshAccessToken(ctx context.Context) (string, error) {
+	c.mu.Lock()
+	c.accessToken = ""
+	c.tokenExpiry = time.Time{}
+	c.mu.Unlock()
+	return c.AccessToken(ctx)
 }
 
 func buildAPIURL(baseURL, endpoint string) (string, error) {
@@ -195,11 +265,6 @@ func (c *Client) Do(ctx context.Context, method, endpoint string, query url.Valu
 		return nil, fmt.Errorf("base URL is not configured")
 	}
 
-	token, err := c.AccessToken(ctx)
-	if err != nil {
-		return nil, err
-	}
-
 	requestURL, err := buildAPIURL(c.baseURL, endpoint)
 	if err != nil {
 		return nil, err
@@ -219,46 +284,68 @@ func (c *Client) Do(ctx context.Context, method, endpoint string, query url.Valu
 		parsedURL.RawQuery = q.Encode()
 	}
 
-	var requestBody io.Reader
+	var bodyBytes []byte
 	if body != nil {
-		jsonBody, err := json.Marshal(body)
+		bodyBytes, err = json.Marshal(body)
 		if err != nil {
 			return nil, fmt.Errorf("marshal request body: %w", err)
 		}
-		requestBody = bytes.NewReader(jsonBody)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, method, parsedURL.String(), requestBody)
-	if err != nil {
-		return nil, fmt.Errorf("create API request: %w", err)
-	}
-	req.Header.Set("Authorization", "Bearer "+token)
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", "go-jobboss2-api")
-	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
-	}
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("API request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(io.LimitReader(resp.Body, defaultResponseBodySize))
-	if err != nil {
-		return nil, fmt.Errorf("read API response: %w", err)
-	}
-
-	if resp.StatusCode >= 400 {
-		return nil, &APIError{
-			StatusCode: resp.StatusCode,
-			URL:        req.URL.String(),
-			Body:       strings.TrimSpace(string(respBody)),
+	var token string
+	for attempt := 0; attempt <= c.max401Retries; attempt++ {
+		if attempt == 0 {
+			token, err = c.AccessToken(ctx)
+		} else {
+			token, err = c.refreshAccessToken(ctx)
 		}
+		if err != nil {
+			return nil, err
+		}
+
+		var requestBody io.Reader
+		if len(bodyBytes) > 0 {
+			requestBody = bytes.NewReader(bodyBytes)
+		}
+
+		req, err := http.NewRequestWithContext(ctx, method, parsedURL.String(), requestBody)
+		if err != nil {
+			return nil, fmt.Errorf("create API request: %w", err)
+		}
+		req.Header.Set("Authorization", "Bearer "+token)
+		req.Header.Set("Accept", "application/json")
+		req.Header.Set("User-Agent", "go-jobboss2-api")
+		if body != nil {
+			req.Header.Set("Content-Type", "application/json")
+		}
+
+		resp, err := c.httpClient.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("API request failed: %w", err)
+		}
+
+		respBody, readErr := io.ReadAll(io.LimitReader(resp.Body, defaultResponseBodySize))
+		resp.Body.Close()
+		if readErr != nil {
+			return nil, fmt.Errorf("read API response: %w", readErr)
+		}
+
+		if resp.StatusCode == http.StatusUnauthorized && attempt < c.max401Retries {
+			continue
+		}
+
+		if resp.StatusCode >= 400 {
+			return nil, &APIError{
+				StatusCode: resp.StatusCode,
+				URL:        req.URL.String(),
+				Body:       strings.TrimSpace(string(respBody)),
+			}
+		}
+
+		return respBody, nil
 	}
 
-	return respBody, nil
+	return nil, fmt.Errorf("request failed after authentication retries")
 }
 
 func (c *Client) Get(ctx context.Context, endpoint string, query url.Values) ([]byte, error) {
