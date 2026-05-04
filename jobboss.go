@@ -63,6 +63,11 @@ type (
 	EstimateUpdate               = internal.EstimateUpdate
 	Feedback                     = internal.Feedback
 	GLCode                       = internal.GLCode
+	OAuth2ExchangeRequest        = internal.OAuth2ExchangeRequest
+	OAuth2ExchangeResponse       = internal.OAuth2ExchangeResponse
+	ECIAPSAuthenticateRequest    = internal.ECIAPSAuthenticateRequest
+	ECIAPSAuthenticateResponse   = internal.ECIAPSAuthenticateResponse
+	ECIAPSScheduleItem           = internal.ECIAPSScheduleItem
 	JobMaterial                  = internal.JobMaterial
 	JobRequirement               = internal.JobRequirement
 	Material                     = internal.Material
