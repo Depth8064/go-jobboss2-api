@@ -63,6 +63,7 @@ type (
 	JobMaterial                  = internal.JobMaterial
 	JobRequirement               = internal.JobRequirement
 	Material                     = internal.Material
+	NonConformance               = internal.NonConformance
 	ProblemResponse              = internal.ProblemResponse
 )
 
