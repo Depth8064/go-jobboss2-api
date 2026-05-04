@@ -40,6 +40,7 @@ type (
 	AttendanceTicketDetailUpdate = internal.AttendanceTicketDetailUpdate
 	AttendanceTicket             = internal.AttendanceTicket
 	AttendanceTicketCreate       = internal.AttendanceTicketCreate
+	BinLocation                  = internal.BinLocation
 	ProblemResponse              = internal.ProblemResponse
 )
 
