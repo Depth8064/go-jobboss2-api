@@ -72,6 +72,8 @@ type (
 	PurchaseOrder                = internal.PurchaseOrder
 	PurchaseOrderLineItem        = internal.PurchaseOrderLineItem
 	PurchaseOrderRelease         = internal.PurchaseOrderRelease
+	Quote                        = internal.Quote
+	QuoteLineItem                = internal.QuoteLineItem
 )
 
 type ListResponse[T any] struct {
