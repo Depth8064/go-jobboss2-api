@@ -55,6 +55,9 @@ type (
 	EmployeeTraining             = internal.EmployeeTraining
 	Employee                     = internal.Employee
 	EmployeeUpdate               = internal.EmployeeUpdate
+	Estimate                     = internal.Estimate
+	EstimateCreate               = internal.EstimateCreate
+	EstimateUpdate               = internal.EstimateUpdate
 	ProblemResponse              = internal.ProblemResponse
 )
 
