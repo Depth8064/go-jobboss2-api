@@ -49,6 +49,9 @@ type (
 	CorrectiveAction             = internal.CorrectiveAction
 	CurrencyCode                 = internal.CurrencyCode
 	Department                   = internal.Department
+	DocumentControl              = internal.DocumentControl
+	DocumentHistory              = internal.DocumentHistory
+	DocumentReview               = internal.DocumentReview
 	ProblemResponse              = internal.ProblemResponse
 )
 
