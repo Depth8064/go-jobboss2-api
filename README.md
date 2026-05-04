@@ -1,15 +1,32 @@
 # go-jobboss2-api
 
-Minimal, dependency-free Go module for JobBOSS2 API access.
+[![CI](https://github.com/Depth8064/go-jobboss2-api/actions/workflows/ci.yml/badge.svg)](https://github.com/Depth8064/go-jobboss2-api/actions/workflows/ci.yml)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/Depth8064/go-jobboss2-api)](go.mod)
+[![Go Report Card](https://goreportcard.com/badge/github.com/Depth8064/go-jobboss2-api)](https://goreportcard.com/report/github.com/Depth8064/go-jobboss2-api)
+[![PkgGoDev](https://pkg.go.dev/badge/github.com/Depth8064/go-jobboss2-api.svg)](https://pkg.go.dev/github.com/Depth8064/go-jobboss2-api)
+[![License](https://img.shields.io/github/license/Depth8064/go-jobboss2-api)](LICENSE)
 
-This module intentionally provides only a low-level authenticated HTTP client so higher-level services can be built by downstream code.
+Comprehensive, dependency-free Go module for JobBOSS2 API access.
+
+This module provides a fully featured, typed client for JobBOSS2 endpoints, including authentication, query helpers, and resource-specific API methods.
+
+## Requirements
+
+- Go 1.26+
+
+## CI
+
+- GitHub Actions runs tests on push to `main` and on pull requests
+- CI uses the latest Go 1.26 patch release (`1.26.x`)
 
 ## Features
 
+- Full OpenAPI v1 group coverage with typed request and response models
 - OAuth2 client-credentials token handling
 - Automatic token caching and refresh
 - Automatic token refresh-and-retry on 401 (max 3 total attempts by default)
-- Basic `GET`, `POST`, `PATCH`, `DELETE` helpers
+- Resource-specific API methods for create/read/update/delete workflows
+- Generic `GET`, `POST`, `PATCH`, `DELETE` helpers for direct endpoint access
 - Generic JSON helpers for typed responses
 - ECI-aligned defaults for API and auth hosts
 - Query helpers for fields/filter/sort/take/skip
@@ -20,7 +37,7 @@ This module intentionally provides only a low-level authenticated HTTP client so
 ## Install
 
 ```bash
-go get go-jobboss2-api
+go get github.com/Depth8064/go-jobboss2-api
 ```
 
 ## Quick Start
@@ -33,13 +50,8 @@ import (
 	"fmt"
 	"net/url"
 
-	jobboss "go-jobboss2-api"
+	jobboss "github.com/Depth8064/go-jobboss2-api"
 )
-
-type Customer struct {
-	CustomerCode string `json:"customerCode"`
-	CustomerName string `json:"customerName"`
-}
 
 func main() {
 	client := jobboss.NewClient(jobboss.Config{
@@ -53,13 +65,28 @@ func main() {
 	query.Set("take", "25")
 	query.Set("fields", "customerCode,customerName")
 
-	resp, err := jobboss.GetJSON[jobboss.ListResponse[Customer]](context.Background(), client, "/api/v1/customers", query)
+	resp, err := client.GetCustomers(context.Background(), query)
 	if err != nil {
 		panic(err)
 	}
 
 	fmt.Printf("customers: %d\n", len(resp.Data))
 }
+```
+
+## Typed API Usage
+
+In addition to generic HTTP helpers, the client provides typed resource methods:
+
+```go
+ctx := context.Background()
+
+orders, err := client.GetOrders(ctx, nil)
+if err != nil {
+	panic(err)
+}
+
+fmt.Printf("orders: %d\n", len(orders.Data))
 ```
 
 ## Defaults
@@ -85,6 +112,27 @@ q = jobboss.ApplySort(q, "+customerCode")
 JobBOSS expects UTC date formats like `yyyy-MM-dd` and `yyyy-MM-ddTHH:mm:ssZ`.
 
 ```go
+import "time"
+
 day := jobboss.FormatUTCDate(time.Now())
 ts := jobboss.FormatUTCDateTime(time.Now())
 ```
+
+## Development
+
+- Run tests: `go test ./...`
+- Run tests with coverage profile: `go test ./... -coverprofile=coverage.out -covermode=count`
+- View coverage summary (bash): `go tool cover -func=coverage.out | tail -n 1`
+- View coverage summary (PowerShell): `go tool cover -func=coverage.out | Select-Object -Last 1`
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution workflow and quality checks.
+
+## Security
+
+See [SECURITY.md](SECURITY.md) for vulnerability reporting instructions.
+
+## License
+
+This project is licensed under the MIT License. See [LICENSE](LICENSE).

@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security report
+    url: https://github.com/Depth8064/go-jobboss2-api/security/policy
+    about: Report security vulnerabilities privately.
