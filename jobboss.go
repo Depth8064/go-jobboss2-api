@@ -46,6 +46,7 @@ type (
 	Contact                      = internal.Contact
 	ContactCreate                = internal.ContactCreate
 	ContactUpdate                = internal.ContactUpdate
+	CorrectiveAction             = internal.CorrectiveAction
 	ProblemResponse              = internal.ProblemResponse
 )
 
