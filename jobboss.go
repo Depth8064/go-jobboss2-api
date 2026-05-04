@@ -65,7 +65,12 @@ type (
 	Material                     = internal.Material
 	NonConformance               = internal.NonConformance
 	OperationCode                = internal.OperationCode
+	PackingList                  = internal.PackingList
+	PackingListLineItem          = internal.PackingListLineItem
 	ProblemResponse              = internal.ProblemResponse
+	PurchaseOrder                = internal.PurchaseOrder
+	PurchaseOrderLineItem        = internal.PurchaseOrderLineItem
+	PurchaseOrderRelease         = internal.PurchaseOrderRelease
 )
 
 type ListResponse[T any] struct {
