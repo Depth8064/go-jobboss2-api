@@ -66,6 +66,10 @@ type (
 	JobMaterial                  = internal.JobMaterial
 	JobRequirement               = internal.JobRequirement
 	Material                     = internal.Material
+	Routing                      = internal.Routing
+	ToolingMaintenance           = internal.ToolingMaintenance
+	UserLabel                    = internal.UserLabel
+	UserTransaction              = internal.UserTransaction
 	NonConformance               = internal.NonConformance
 	OperationCode                = internal.OperationCode
 	PackingList                  = internal.PackingList
