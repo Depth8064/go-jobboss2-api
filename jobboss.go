@@ -41,6 +41,8 @@ type (
 	AttendanceTicket             = internal.AttendanceTicket
 	AttendanceTicketCreate       = internal.AttendanceTicketCreate
 	BinLocation                  = internal.BinLocation
+	Company                      = internal.Company
+	CompanyCalendar              = internal.CompanyCalendar
 	ProblemResponse              = internal.ProblemResponse
 )
 
