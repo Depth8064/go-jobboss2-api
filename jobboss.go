@@ -88,6 +88,8 @@ type (
 	ShippingAddress              = internal.ShippingAddress
 	TaxCode                      = internal.TaxCode
 	Term                         = internal.Term
+	TimeTicket                   = internal.TimeTicket
+	TimeTicketDetail             = internal.TimeTicketDetail
 	Vendor                       = internal.Vendor
 	VendorReturn                 = internal.VendorReturn
 	VendorReturnLineItem         = internal.VendorReturnLineItem
