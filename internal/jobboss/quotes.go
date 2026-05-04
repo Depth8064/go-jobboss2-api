@@ -60,13 +60,13 @@ func (c *Client) CreateQuote(ctx context.Context, quote Quote) (SingleResponse[Q
 }
 
 // UpdateQuote updates a quote by number.
-func (c *Client) UpdateQuote(ctx context.Context, quoteNumber string, quote Quote) (SingleResponse[Quote], error) {
+func (c *Client) UpdateQuote(ctx context.Context, quoteNumber string, quote Quote) (UpdateResult, error) {
 	quoteNumber = strings.TrimSpace(quoteNumber)
 	if quoteNumber == "" {
-		return SingleResponse[Quote]{}, fmt.Errorf("quote number is required")
+		return UpdateResult{}, fmt.Errorf("quote number is required")
 	}
 	endpoint := "/api/v1/quotes/" + url.PathEscape(quoteNumber)
-	return PatchJSON[Quote, SingleResponse[Quote]](ctx, c, endpoint, quote)
+	return PatchNoContentJSON[Quote](ctx, c, endpoint, quote)
 }
 
 // GetQuoteLineItem fetches a quote line item by quote and item number.
@@ -93,14 +93,14 @@ func (c *Client) CreateQuoteLineItem(ctx context.Context, quoteNumber string, li
 }
 
 // UpdateQuoteLineItem updates a quote line item under a quote.
-func (c *Client) UpdateQuoteLineItem(ctx context.Context, quoteNumber string, itemNumber int, lineItem QuoteLineItem) (SingleResponse[QuoteLineItem], error) {
+func (c *Client) UpdateQuoteLineItem(ctx context.Context, quoteNumber string, itemNumber int, lineItem QuoteLineItem) (UpdateResult, error) {
 	quoteNumber = strings.TrimSpace(quoteNumber)
 	if quoteNumber == "" {
-		return SingleResponse[QuoteLineItem]{}, fmt.Errorf("quote number is required")
+		return UpdateResult{}, fmt.Errorf("quote number is required")
 	}
 	if itemNumber <= 0 {
-		return SingleResponse[QuoteLineItem]{}, fmt.Errorf("item number must be greater than zero")
+		return UpdateResult{}, fmt.Errorf("item number must be greater than zero")
 	}
 	endpoint := "/api/v1/quotes/" + url.PathEscape(quoteNumber) + "/quote-line-items/" + strconv.Itoa(itemNumber)
-	return PatchJSON[QuoteLineItem, SingleResponse[QuoteLineItem]](ctx, c, endpoint, lineItem)
+	return PatchNoContentJSON[QuoteLineItem](ctx, c, endpoint, lineItem)
 }

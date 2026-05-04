@@ -85,7 +85,7 @@ func TestQuotesGroup(t *testing.T) {
 		t.Fatalf("CreateQuote failed: resp=%+v err=%v", createdQuote, err)
 	}
 	updatedQuote, err := c.UpdateQuote(context.Background(), "Q-1", Quote{Status: "WON"})
-	if err != nil || updatedQuote.Data.Status != "WON" {
+	if err != nil || updatedQuote.StatusCode != http.StatusOK || updatedQuote.NoContent {
 		t.Fatalf("UpdateQuote failed: resp=%+v err=%v", updatedQuote, err)
 	}
 	_, err = c.UpdateQuote(context.Background(), "", Quote{})
@@ -116,7 +116,7 @@ func TestQuotesGroup(t *testing.T) {
 	}
 
 	updatedLine, err := c.UpdateQuoteLineItem(context.Background(), "Q-1", 1, QuoteLineItem{Description: "Laser Updated"})
-	if err != nil || updatedLine.Data.Description != "Laser Updated" {
+	if err != nil || updatedLine.StatusCode != http.StatusOK || updatedLine.NoContent {
 		t.Fatalf("UpdateQuoteLineItem failed: resp=%+v err=%v", updatedLine, err)
 	}
 	_, err = c.UpdateQuoteLineItem(context.Background(), "", 1, QuoteLineItem{})

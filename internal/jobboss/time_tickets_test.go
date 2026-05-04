@@ -74,7 +74,7 @@ func TestTimeTicketsGroup(t *testing.T) {
 		t.Fatalf("GetTimeTicketByDateAndEmployee failed: resp=%+v err=%v", oneTicket, err)
 	}
 	updatedTicket, err := c.UpdateTimeTicketByDateAndEmployee(context.Background(), "2024-01-01", "E1", TimeTicket{Status: "CLOSED"})
-	if err != nil || updatedTicket.Data.Status != "CLOSED" {
+	if err != nil || updatedTicket.StatusCode != http.StatusOK || updatedTicket.NoContent {
 		t.Fatalf("UpdateTimeTicketByDateAndEmployee failed: resp=%+v err=%v", updatedTicket, err)
 	}
 	_, err = c.GetTimeTicketByDateAndEmployee(context.Background(), "", "E1", nil)
@@ -107,7 +107,7 @@ func TestTimeTicketsGroup(t *testing.T) {
 		t.Fatalf("GetTimeTicketDetailByGUID failed: resp=%+v err=%v", oneDetail, err)
 	}
 	updatedDetail, err := c.UpdateTimeTicketDetailByGUID(context.Background(), "GUID-1", TimeTicketDetail{Status: "CLOSED"})
-	if err != nil || updatedDetail.Data.Status != "CLOSED" {
+	if err != nil || updatedDetail.StatusCode != http.StatusOK || updatedDetail.NoContent {
 		t.Fatalf("UpdateTimeTicketDetailByGUID failed: resp=%+v err=%v", updatedDetail, err)
 	}
 	_, err = c.GetTimeTicketDetailByGUID(context.Background(), "", nil)

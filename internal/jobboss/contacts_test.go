@@ -77,7 +77,7 @@ func TestContactsGroup(t *testing.T) {
 	}
 
 	upd, err := c.UpdateContact(context.Background(), "CUST", "ACME", "John", ContactUpdate{Phone: &phone, Active: &active})
-	if err != nil || upd.Data.Phone != "555-2000" || !upd.Data.Active {
+	if err != nil || upd.StatusCode != http.StatusOK || upd.NoContent {
 		t.Fatalf("UpdateContact failed: resp=%+v err=%v", upd, err)
 	}
 

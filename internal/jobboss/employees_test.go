@@ -70,7 +70,7 @@ func TestEmployeesGroup(t *testing.T) {
 	}
 
 	updated, err := c.UpdateEmployee(context.Background(), "101", EmployeeUpdate{EmployeeName: &name, ShiftID: &shift})
-	if err != nil || updated.Data.ShiftID != 2 || updated.Data.EmployeeName != "John Smith" {
+	if err != nil || updated.StatusCode != http.StatusOK || updated.NoContent {
 		t.Fatalf("UpdateEmployee failed: resp=%+v err=%v", updated, err)
 	}
 

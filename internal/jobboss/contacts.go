@@ -82,19 +82,19 @@ func (c *Client) GetContact(ctx context.Context, object, contactCode, contact st
 }
 
 // UpdateContact updates a contact by object, contact code, and contact.
-func (c *Client) UpdateContact(ctx context.Context, object, contactCode, contact string, payload ContactUpdate) (SingleResponse[Contact], error) {
+func (c *Client) UpdateContact(ctx context.Context, object, contactCode, contact string, payload ContactUpdate) (UpdateResult, error) {
 	object = strings.TrimSpace(object)
 	if object == "" {
-		return SingleResponse[Contact]{}, fmt.Errorf("object is required")
+		return UpdateResult{}, fmt.Errorf("object is required")
 	}
 	contactCode = strings.TrimSpace(contactCode)
 	if contactCode == "" {
-		return SingleResponse[Contact]{}, fmt.Errorf("contact code is required")
+		return UpdateResult{}, fmt.Errorf("contact code is required")
 	}
 	contact = strings.TrimSpace(contact)
 	if contact == "" {
-		return SingleResponse[Contact]{}, fmt.Errorf("contact is required")
+		return UpdateResult{}, fmt.Errorf("contact is required")
 	}
 	endpoint := "/api/v1/contacts/" + url.PathEscape(object) + "/" + url.PathEscape(contactCode) + "/" + url.PathEscape(contact)
-	return PatchJSON[ContactUpdate, SingleResponse[Contact]](ctx, c, endpoint, payload)
+	return PatchNoContentJSON[ContactUpdate](ctx, c, endpoint, payload)
 }

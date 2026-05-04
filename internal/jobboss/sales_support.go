@@ -124,13 +124,13 @@ func (c *Client) GetSalespersons(ctx context.Context, query url.Values) (ListRes
 }
 
 // UpdateSalesperson updates a salesperson by sales ID.
-func (c *Client) UpdateSalesperson(ctx context.Context, salesID string, salesperson Salesperson) (SingleResponse[Salesperson], error) {
+func (c *Client) UpdateSalesperson(ctx context.Context, salesID string, salesperson Salesperson) (UpdateResult, error) {
 	salesID = strings.TrimSpace(salesID)
 	if salesID == "" {
-		return SingleResponse[Salesperson]{}, fmt.Errorf("sales id is required")
+		return UpdateResult{}, fmt.Errorf("sales id is required")
 	}
 	endpoint := "/api/v1/salespersons/" + url.PathEscape(salesID)
-	return PatchJSON[Salesperson, SingleResponse[Salesperson]](ctx, c, endpoint, salesperson)
+	return PatchNoContentJSON[Salesperson](ctx, c, endpoint, salesperson)
 }
 
 // GetShippingAddresses fetches shipping addresses.
@@ -158,17 +158,17 @@ func (c *Client) CreateShippingAddress(ctx context.Context, shippingAddress Ship
 }
 
 // UpdateShippingAddress updates a shipping address by customer/location.
-func (c *Client) UpdateShippingAddress(ctx context.Context, customerCode, location string, shippingAddress ShippingAddress) (SingleResponse[ShippingAddress], error) {
+func (c *Client) UpdateShippingAddress(ctx context.Context, customerCode, location string, shippingAddress ShippingAddress) (UpdateResult, error) {
 	customerCode = strings.TrimSpace(customerCode)
 	location = strings.TrimSpace(location)
 	if customerCode == "" {
-		return SingleResponse[ShippingAddress]{}, fmt.Errorf("customer code is required")
+		return UpdateResult{}, fmt.Errorf("customer code is required")
 	}
 	if location == "" {
-		return SingleResponse[ShippingAddress]{}, fmt.Errorf("location is required")
+		return UpdateResult{}, fmt.Errorf("location is required")
 	}
 	endpoint := "/api/v1/shipping-addresses/" + url.PathEscape(customerCode) + "/" + url.PathEscape(location)
-	return PatchJSON[ShippingAddress, SingleResponse[ShippingAddress]](ctx, c, endpoint, shippingAddress)
+	return PatchNoContentJSON[ShippingAddress](ctx, c, endpoint, shippingAddress)
 }
 
 // GetTaxCodes fetches tax codes.

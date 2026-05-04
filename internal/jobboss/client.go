@@ -257,13 +257,21 @@ func buildAPIURL(baseURL, endpoint string) (string, error) {
 
 // Do sends a raw HTTP request to the JobBOSS API and returns response bytes.
 func (c *Client) Do(ctx context.Context, method, endpoint string, query url.Values, body any) ([]byte, error) {
+	respBody, _, err := c.doWithStatus(ctx, method, endpoint, query, body)
+	if err != nil {
+		return nil, err
+	}
+	return respBody, nil
+}
+
+func (c *Client) doWithStatus(ctx context.Context, method, endpoint string, query url.Values, body any) ([]byte, int, error) {
 	if c.baseURL == "" {
-		return nil, fmt.Errorf("base URL is not configured")
+		return nil, 0, fmt.Errorf("base URL is not configured")
 	}
 
 	requestURL, err := buildAPIURL(c.baseURL, endpoint)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	// buildAPIURL already validates and normalizes URL input.
@@ -282,7 +290,7 @@ func (c *Client) Do(ctx context.Context, method, endpoint string, query url.Valu
 	if body != nil {
 		bodyBytes, err = json.Marshal(body)
 		if err != nil {
-			return nil, fmt.Errorf("marshal request body: %w", err)
+			return nil, 0, fmt.Errorf("marshal request body: %w", err)
 		}
 	}
 
@@ -294,7 +302,7 @@ func (c *Client) Do(ctx context.Context, method, endpoint string, query url.Valu
 			token, err = c.refreshAccessToken(ctx)
 		}
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 
 		var requestBody io.Reader
@@ -304,7 +312,7 @@ func (c *Client) Do(ctx context.Context, method, endpoint string, query url.Valu
 
 		req, err := http.NewRequestWithContext(ctx, method, parsedURL.String(), requestBody)
 		if err != nil {
-			return nil, fmt.Errorf("create API request: %w", err)
+			return nil, 0, fmt.Errorf("create API request: %w", err)
 		}
 		req.Header.Set("Authorization", "Bearer "+token)
 		req.Header.Set("Accept", "application/json")
@@ -315,13 +323,13 @@ func (c *Client) Do(ctx context.Context, method, endpoint string, query url.Valu
 
 		resp, err := c.httpClient.Do(req)
 		if err != nil {
-			return nil, fmt.Errorf("API request failed: %w", err)
+			return nil, 0, fmt.Errorf("API request failed: %w", err)
 		}
 
 		respBody, readErr := io.ReadAll(io.LimitReader(resp.Body, defaultResponseBodySize))
 		resp.Body.Close()
 		if readErr != nil {
-			return nil, fmt.Errorf("read API response: %w", readErr)
+			return nil, 0, fmt.Errorf("read API response: %w", readErr)
 		}
 
 		if resp.StatusCode == http.StatusUnauthorized && attempt < c.max401Retries {
@@ -329,17 +337,17 @@ func (c *Client) Do(ctx context.Context, method, endpoint string, query url.Valu
 		}
 
 		if resp.StatusCode >= 400 {
-			return nil, &APIError{
+			return nil, 0, &APIError{
 				StatusCode: resp.StatusCode,
 				URL:        req.URL.String(),
 				Body:       strings.TrimSpace(string(respBody)),
 			}
 		}
 
-		return respBody, nil
+		return respBody, resp.StatusCode, nil
 	}
 
-	return nil, fmt.Errorf("request failed after authentication retries")
+	return nil, 0, fmt.Errorf("request failed after authentication retries")
 }
 
 func (c *Client) Get(ctx context.Context, endpoint string, query url.Values) ([]byte, error) {
@@ -352,6 +360,10 @@ func (c *Client) Post(ctx context.Context, endpoint string, body any) ([]byte, e
 
 func (c *Client) Patch(ctx context.Context, endpoint string, body any) ([]byte, error) {
 	return c.Do(ctx, http.MethodPatch, endpoint, nil, body)
+}
+
+func (c *Client) PatchWithStatus(ctx context.Context, endpoint string, body any) ([]byte, int, error) {
+	return c.doWithStatus(ctx, http.MethodPatch, endpoint, nil, body)
 }
 
 func (c *Client) Delete(ctx context.Context, endpoint string, query url.Values) ([]byte, error) {
@@ -391,8 +403,21 @@ func PatchJSON[Req any, Resp any](ctx context.Context, c *Client, endpoint strin
 	if err != nil {
 		return out, err
 	}
+	if len(bytes.TrimSpace(body)) == 0 {
+		return out, fmt.Errorf("decode PATCH response: empty response body")
+	}
 	if err := json.Unmarshal(body, &out); err != nil {
 		return out, fmt.Errorf("decode PATCH response: %w", err)
 	}
 	return out, nil
+}
+
+// PatchNoContentJSON sends a PATCH request and returns metadata-only success.
+// This is the preferred helper for endpoints that commonly return 204 No Content.
+func PatchNoContentJSON[Req any](ctx context.Context, c *Client, endpoint string, payload Req) (UpdateResult, error) {
+	body, statusCode, err := c.PatchWithStatus(ctx, endpoint, payload)
+	if err != nil {
+		return UpdateResult{}, err
+	}
+	return UpdateResult{StatusCode: statusCode, NoContent: len(bytes.TrimSpace(body)) == 0}, nil
 }

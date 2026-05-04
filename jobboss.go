@@ -14,6 +14,7 @@ type (
 	Client                       = internal.Client
 	TokenResponse                = internal.TokenResponse
 	APIError                     = internal.APIError
+	UpdateResult                 = internal.UpdateResult
 	FilterOp                     = internal.FilterOp
 	DeviceCredentialType         = internal.DeviceCredentialType
 	DeviceCreateModel            = internal.DeviceCreateModel
@@ -175,4 +176,8 @@ func PostJSON[Req any, Resp any](ctx context.Context, c *Client, endpoint string
 
 func PatchJSON[Req any, Resp any](ctx context.Context, c *Client, endpoint string, payload Req) (Resp, error) {
 	return internal.PatchJSON[Req, Resp](ctx, c, endpoint, payload)
+}
+
+func PatchNoContentJSON[Req any](ctx context.Context, c *Client, endpoint string, payload Req) (UpdateResult, error) {
+	return internal.PatchNoContentJSON[Req](ctx, c, endpoint, payload)
 }

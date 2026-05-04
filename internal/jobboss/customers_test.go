@@ -105,7 +105,7 @@ func TestCustomersSection(t *testing.T) {
 	if err != nil {
 		t.Fatalf("UpdateCustomer failed: %v", err)
 	}
-	if updateResp.Data.CustomerName != "Acme Industries" || updateResp.Data.Phone != "555-0100" {
+	if updateResp.StatusCode != http.StatusOK || updateResp.NoContent {
 		t.Fatalf("unexpected updated customer: %+v", updateResp)
 	}
 

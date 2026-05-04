@@ -377,3 +377,73 @@ func TestDoErrorBranches(t *testing.T) {
 		}
 	})
 }
+
+func TestPatchNoContentJSONAndPatchJSONEmptyBody(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/oauth2/api-user/token":
+			_ = json.NewEncoder(w).Encode(TokenResponse{AccessToken: "tok", ExpiresIn: 3600})
+		case "/patch-204":
+			if r.Method != http.MethodPatch {
+				w.WriteHeader(http.StatusMethodNotAllowed)
+				return
+			}
+			w.WriteHeader(http.StatusNoContent)
+		case "/patch-200":
+			if r.Method != http.MethodPatch {
+				w.WriteHeader(http.StatusMethodNotAllowed)
+				return
+			}
+			_, _ = w.Write([]byte(`{"Data":{"value":"ok"}}`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer ts.Close()
+
+	c := NewClient(Config{
+		BaseURL:           ts.URL,
+		TokenURL:          ts.URL + "/oauth2/api-user/token",
+		ClientID:          "id",
+		ClientSecret:      "secret",
+		HTTPClient:        ts.Client(),
+		MaxAuthRetryOn401: 0,
+	})
+
+	meta, err := PatchNoContentJSON[map[string]string](context.Background(), c, "/patch-204", map[string]string{"x": "1"})
+	if err != nil {
+		t.Fatalf("PatchNoContentJSON failed: %v", err)
+	}
+	if meta.StatusCode != http.StatusNoContent || !meta.NoContent {
+		t.Fatalf("unexpected PatchNoContentJSON metadata: %+v", meta)
+	}
+
+	metaWithBody, err := PatchNoContentJSON[map[string]string](context.Background(), c, "/patch-200", map[string]string{"x": "1"})
+	if err != nil {
+		t.Fatalf("PatchNoContentJSON with body failed: %v", err)
+	}
+	if metaWithBody.StatusCode != http.StatusOK || metaWithBody.NoContent {
+		t.Fatalf("unexpected PatchNoContentJSON body metadata: %+v", metaWithBody)
+	}
+
+	if _, err := PatchNoContentJSON[map[string]string](context.Background(), c, "/missing", map[string]string{"x": "1"}); err == nil {
+		t.Fatalf("expected PatchNoContentJSON request error")
+	}
+
+	type payload struct {
+		Data struct {
+			Value string `json:"value"`
+		} `json:"Data"`
+	}
+	if _, err := PatchJSON[map[string]string, payload](context.Background(), c, "/patch-204", map[string]string{"x": "1"}); err == nil {
+		t.Fatalf("expected PatchJSON empty-body error")
+	}
+
+	parsed, err := PatchJSON[map[string]string, payload](context.Background(), c, "/patch-200", map[string]string{"x": "1"})
+	if err != nil {
+		t.Fatalf("PatchJSON with body failed: %v", err)
+	}
+	if parsed.Data.Value != "ok" {
+		t.Fatalf("unexpected PatchJSON parsed value: %+v", parsed)
+	}
+}

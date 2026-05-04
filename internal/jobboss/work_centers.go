@@ -54,13 +54,13 @@ func (c *Client) CreateWorkCenter(ctx context.Context, workCenter WorkCenter) (S
 }
 
 // UpdateWorkCenter updates a work center by code.
-func (c *Client) UpdateWorkCenter(ctx context.Context, workCenter string, payload WorkCenter) (SingleResponse[WorkCenter], error) {
+func (c *Client) UpdateWorkCenter(ctx context.Context, workCenter string, payload WorkCenter) (UpdateResult, error) {
 	workCenter = strings.TrimSpace(workCenter)
 	if workCenter == "" {
-		return SingleResponse[WorkCenter]{}, fmt.Errorf("work center is required")
+		return UpdateResult{}, fmt.Errorf("work center is required")
 	}
 	endpoint := "/api/v1/work-centers/" + url.PathEscape(workCenter)
-	return PatchJSON[WorkCenter, SingleResponse[WorkCenter]](ctx, c, endpoint, payload)
+	return PatchNoContentJSON[WorkCenter](ctx, c, endpoint, payload)
 }
 
 // GetWorkCenterMaintenance fetches work-center-maintenance records.

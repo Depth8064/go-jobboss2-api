@@ -109,7 +109,7 @@ func TestSalesSupportGroups(t *testing.T) {
 		t.Fatalf("GetSalespersons failed: resp=%+v err=%v", sales, err)
 	}
 	updatedSales, err := c.UpdateSalesperson(context.Background(), "S1", Salesperson{Active: true})
-	if err != nil || !updatedSales.Data.Active {
+	if err != nil || updatedSales.StatusCode != http.StatusOK || updatedSales.NoContent {
 		t.Fatalf("UpdateSalesperson failed: resp=%+v err=%v", updatedSales, err)
 	}
 	_, err = c.UpdateSalesperson(context.Background(), "", Salesperson{})
@@ -139,7 +139,7 @@ func TestSalesSupportGroups(t *testing.T) {
 		t.Fatalf("CreateShippingAddress failed: resp=%+v err=%v", createdShip, err)
 	}
 	updatedShip, err := c.UpdateShippingAddress(context.Background(), "C1", "MAIN", ShippingAddress{City: "Peoria"})
-	if err != nil || updatedShip.Data.City != "Peoria" {
+	if err != nil || updatedShip.StatusCode != http.StatusOK || updatedShip.NoContent {
 		t.Fatalf("UpdateShippingAddress failed: resp=%+v err=%v", updatedShip, err)
 	}
 	_, err = c.UpdateShippingAddress(context.Background(), "", "MAIN", ShippingAddress{})

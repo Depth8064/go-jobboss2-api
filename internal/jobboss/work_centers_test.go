@@ -63,7 +63,7 @@ func TestWorkCentersGroup(t *testing.T) {
 		t.Fatalf("CreateWorkCenter failed: resp=%+v err=%v", created, err)
 	}
 	updated, err := c.UpdateWorkCenter(context.Background(), "WC1", WorkCenter{Active: false})
-	if err != nil || updated.Data.Active {
+	if err != nil || updated.StatusCode != http.StatusOK || updated.NoContent {
 		t.Fatalf("UpdateWorkCenter failed: resp=%+v err=%v", updated, err)
 	}
 	_, err = c.UpdateWorkCenter(context.Background(), "", WorkCenter{})

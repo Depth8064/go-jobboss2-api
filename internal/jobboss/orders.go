@@ -81,13 +81,13 @@ func (c *Client) CreateOrder(ctx context.Context, payload OrderCreate) (SingleRe
 }
 
 // UpdateOrder updates an order using PATCH /api/v1/orders/{orderNumber}.
-func (c *Client) UpdateOrder(ctx context.Context, orderNumber string, payload OrderUpdate) (SingleResponse[Order], error) {
+func (c *Client) UpdateOrder(ctx context.Context, orderNumber string, payload OrderUpdate) (UpdateResult, error) {
 	orderNumber = strings.TrimSpace(orderNumber)
 	if orderNumber == "" {
-		return SingleResponse[Order]{}, fmt.Errorf("order number is required")
+		return UpdateResult{}, fmt.Errorf("order number is required")
 	}
 	endpoint := "/api/v1/orders/" + url.PathEscape(orderNumber)
-	return PatchJSON[OrderUpdate, SingleResponse[Order]](ctx, c, endpoint, payload)
+	return PatchNoContentJSON[OrderUpdate](ctx, c, endpoint, payload)
 }
 
 // OrderLineItem models an Order Line Item payload.

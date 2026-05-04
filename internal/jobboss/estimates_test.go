@@ -76,7 +76,7 @@ func TestEstimatesGroup(t *testing.T) {
 	}
 
 	updated, err := c.UpdateEstimate(context.Background(), "PN-100", EstimateUpdate{Description: &desc})
-	if err != nil || updated.Data.Description != "Updated desc" {
+	if err != nil || updated.StatusCode != http.StatusOK || updated.NoContent {
 		t.Fatalf("UpdateEstimate failed: resp=%+v err=%v", updated, err)
 	}
 

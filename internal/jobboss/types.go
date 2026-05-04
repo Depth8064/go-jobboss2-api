@@ -10,6 +10,12 @@ type SingleResponse[T any] struct {
 	Data T `json:"Data"`
 }
 
+// UpdateResult describes the outcome of a successful PATCH/Update call.
+type UpdateResult struct {
+	StatusCode int  `json:"statusCode"`
+	NoContent  bool `json:"noContent"`
+}
+
 // ProblemResponse models typical API error payload fields.
 type ProblemResponse struct {
 	Title   string `json:"Title,omitempty"`

@@ -67,7 +67,7 @@ func TestVendorsGroup(t *testing.T) {
 		t.Fatalf("CreateVendor failed: resp=%+v err=%v", created, err)
 	}
 	updated, err := c.UpdateVendor(context.Background(), "V1", Vendor{Status: "INACTIVE"})
-	if err != nil || updated.Data.Status != "INACTIVE" {
+	if err != nil || updated.StatusCode != http.StatusOK || updated.NoContent {
 		t.Fatalf("UpdateVendor failed: resp=%+v err=%v", updated, err)
 	}
 	_, err = c.UpdateVendor(context.Background(), "", Vendor{})

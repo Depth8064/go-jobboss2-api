@@ -58,17 +58,17 @@ func (c *Client) GetTimeTicketByDateAndEmployee(ctx context.Context, ticketDate,
 }
 
 // UpdateTimeTicketByDateAndEmployee updates a time ticket by ticket date and employee code.
-func (c *Client) UpdateTimeTicketByDateAndEmployee(ctx context.Context, ticketDate, employeeCode string, ticket TimeTicket) (SingleResponse[TimeTicket], error) {
+func (c *Client) UpdateTimeTicketByDateAndEmployee(ctx context.Context, ticketDate, employeeCode string, ticket TimeTicket) (UpdateResult, error) {
 	ticketDate = strings.TrimSpace(ticketDate)
 	employeeCode = strings.TrimSpace(employeeCode)
 	if ticketDate == "" {
-		return SingleResponse[TimeTicket]{}, fmt.Errorf("ticket date is required")
+		return UpdateResult{}, fmt.Errorf("ticket date is required")
 	}
 	if employeeCode == "" {
-		return SingleResponse[TimeTicket]{}, fmt.Errorf("employee code is required")
+		return UpdateResult{}, fmt.Errorf("employee code is required")
 	}
 	endpoint := "/api/v1/time-tickets/" + url.PathEscape(ticketDate) + "/employees/" + url.PathEscape(employeeCode)
-	return PatchJSON[TimeTicket, SingleResponse[TimeTicket]](ctx, c, endpoint, ticket)
+	return PatchNoContentJSON[TimeTicket](ctx, c, endpoint, ticket)
 }
 
 // GetTimeTicketDetails fetches time ticket details.
@@ -92,11 +92,11 @@ func (c *Client) GetTimeTicketDetailByGUID(ctx context.Context, timeTicketGUID s
 }
 
 // UpdateTimeTicketDetailByGUID updates a time ticket detail by GUID.
-func (c *Client) UpdateTimeTicketDetailByGUID(ctx context.Context, timeTicketGUID string, detail TimeTicketDetail) (SingleResponse[TimeTicketDetail], error) {
+func (c *Client) UpdateTimeTicketDetailByGUID(ctx context.Context, timeTicketGUID string, detail TimeTicketDetail) (UpdateResult, error) {
 	timeTicketGUID = strings.TrimSpace(timeTicketGUID)
 	if timeTicketGUID == "" {
-		return SingleResponse[TimeTicketDetail]{}, fmt.Errorf("time ticket guid is required")
+		return UpdateResult{}, fmt.Errorf("time ticket guid is required")
 	}
 	endpoint := "/api/v1/time-ticket-details/" + url.PathEscape(timeTicketGUID)
-	return PatchJSON[TimeTicketDetail, SingleResponse[TimeTicketDetail]](ctx, c, endpoint, detail)
+	return PatchNoContentJSON[TimeTicketDetail](ctx, c, endpoint, detail)
 }

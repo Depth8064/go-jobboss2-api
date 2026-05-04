@@ -28,6 +28,7 @@ This module provides a fully featured, typed client for JobBOSS2 endpoints, incl
 - Resource-specific API methods for create/read/update/delete workflows
 - Generic `GET`, `POST`, `PATCH`, `DELETE` helpers for direct endpoint access
 - Generic JSON helpers for typed responses
+- Explicit metadata-first PATCH helper for 204/empty-body update endpoints
 - ECI-aligned defaults for API and auth hosts
 - Query helpers for fields/filter/sort/take/skip
 - UTC date/date-time formatting helpers
@@ -87,6 +88,31 @@ if err != nil {
 }
 
 fmt.Printf("orders: %d\n", len(orders.Data))
+```
+
+## Update Semantics (PATCH)
+
+Many JobBOSS update endpoints return `204 No Content` after a successful `PATCH`.
+
+- Resource `Update*` methods now return `UpdateResult` (status metadata), not hydrated entities.
+- Use a follow-up `Get*` call when you need the latest entity state.
+- `PatchJSON` now expects a JSON response body and returns an error for empty responses.
+- Use `PatchNoContentJSON` for metadata-only PATCH success handling.
+
+Example:
+
+```go
+result, err := client.UpdateOrder(ctx, "SO-100", jobboss.OrderUpdate{Status: &status})
+if err != nil {
+	panic(err)
+}
+if result.StatusCode == 204 {
+	updated, err := client.GetOrderByNumber(ctx, "SO-100", nil)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(updated.Data.OrderNumber)
+}
 ```
 
 ## Defaults

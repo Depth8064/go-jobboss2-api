@@ -106,7 +106,7 @@ func TestOrdersSection(t *testing.T) {
 	if err != nil {
 		t.Fatalf("UpdateOrder failed: %v", err)
 	}
-	if updateResp.Data.SalesID != "S2" || updateResp.Data.TermsCode != "NET30" {
+	if updateResp.StatusCode != http.StatusOK || updateResp.NoContent {
 		t.Fatalf("unexpected updated order: %+v", updateResp)
 	}
 

@@ -73,11 +73,11 @@ func (c *Client) CreateEstimate(ctx context.Context, payload EstimateCreate) (Si
 }
 
 // UpdateEstimate updates an estimate by part number.
-func (c *Client) UpdateEstimate(ctx context.Context, partNumber string, payload EstimateUpdate) (SingleResponse[Estimate], error) {
+func (c *Client) UpdateEstimate(ctx context.Context, partNumber string, payload EstimateUpdate) (UpdateResult, error) {
 	partNumber = strings.TrimSpace(partNumber)
 	if partNumber == "" {
-		return SingleResponse[Estimate]{}, fmt.Errorf("part number is required")
+		return UpdateResult{}, fmt.Errorf("part number is required")
 	}
 	endpoint := "/api/v1/estimates/" + url.PathEscape(partNumber)
-	return PatchJSON[EstimateUpdate, SingleResponse[Estimate]](ctx, c, endpoint, payload)
+	return PatchNoContentJSON[EstimateUpdate](ctx, c, endpoint, payload)
 }

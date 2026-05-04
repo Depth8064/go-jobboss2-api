@@ -82,13 +82,13 @@ func (c *Client) CreateVendor(ctx context.Context, vendor Vendor) (SingleRespons
 }
 
 // UpdateVendor updates a vendor by code.
-func (c *Client) UpdateVendor(ctx context.Context, vendorCode string, vendor Vendor) (SingleResponse[Vendor], error) {
+func (c *Client) UpdateVendor(ctx context.Context, vendorCode string, vendor Vendor) (UpdateResult, error) {
 	vendorCode = strings.TrimSpace(vendorCode)
 	if vendorCode == "" {
-		return SingleResponse[Vendor]{}, fmt.Errorf("vendor code is required")
+		return UpdateResult{}, fmt.Errorf("vendor code is required")
 	}
 	endpoint := "/api/v1/vendors/" + url.PathEscape(vendorCode)
-	return PatchJSON[Vendor, SingleResponse[Vendor]](ctx, c, endpoint, vendor)
+	return PatchNoContentJSON[Vendor](ctx, c, endpoint, vendor)
 }
 
 // GetVendorReturns fetches vendor returns.

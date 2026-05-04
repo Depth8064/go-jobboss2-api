@@ -64,11 +64,11 @@ func (c *Client) GetEmployees(ctx context.Context, query url.Values) (ListRespon
 }
 
 // UpdateEmployee updates an employee by employee code.
-func (c *Client) UpdateEmployee(ctx context.Context, employeeCode string, payload EmployeeUpdate) (SingleResponse[Employee], error) {
+func (c *Client) UpdateEmployee(ctx context.Context, employeeCode string, payload EmployeeUpdate) (UpdateResult, error) {
 	employeeCode = strings.TrimSpace(employeeCode)
 	if employeeCode == "" {
-		return SingleResponse[Employee]{}, fmt.Errorf("employee code is required")
+		return UpdateResult{}, fmt.Errorf("employee code is required")
 	}
 	endpoint := "/api/v1/employees/" + url.PathEscape(employeeCode)
-	return PatchJSON[EmployeeUpdate, SingleResponse[Employee]](ctx, c, endpoint, payload)
+	return PatchNoContentJSON[EmployeeUpdate](ctx, c, endpoint, payload)
 }

@@ -86,13 +86,13 @@ func (c *Client) GetAttendanceTicketDetails(ctx context.Context, query url.Value
 }
 
 // UpdateAttendanceTicketDetail updates an attendance ticket detail by ID.
-func (c *Client) UpdateAttendanceTicketDetail(ctx context.Context, id string, payload AttendanceTicketDetailUpdate) (SingleResponse[AttendanceTicketDetail], error) {
+func (c *Client) UpdateAttendanceTicketDetail(ctx context.Context, id string, payload AttendanceTicketDetailUpdate) (UpdateResult, error) {
 	id = strings.TrimSpace(id)
 	if id == "" {
-		return SingleResponse[AttendanceTicketDetail]{}, fmt.Errorf("id is required")
+		return UpdateResult{}, fmt.Errorf("attendance ticket detail id is required")
 	}
 	endpoint := "/api/v1/attendance-ticket-details/" + url.PathEscape(id)
-	return PatchJSON[AttendanceTicketDetailUpdate, SingleResponse[AttendanceTicketDetail]](ctx, c, endpoint, payload)
+	return PatchNoContentJSON[AttendanceTicketDetailUpdate](ctx, c, endpoint, payload)
 }
 
 // CreateAttendanceTicketDetail creates an attendance ticket detail for employee and date.

@@ -87,7 +87,7 @@ func TestAttendanceTicketGroups(t *testing.T) {
 	}
 
 	upd, err := c.UpdateAttendanceTicketDetail(context.Background(), "1", AttendanceTicketDetailUpdate{Comments: &comment, IsOvertime: &isOT})
-	if err != nil || upd.Data.Comments != "fixed" || !upd.Data.IsOvertime {
+	if err != nil || upd.StatusCode != http.StatusOK || upd.NoContent {
 		t.Fatalf("UpdateAttendanceTicketDetail failed: resp=%+v err=%v", upd, err)
 	}
 

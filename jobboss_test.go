@@ -21,6 +21,8 @@ func TestRootFacadeWrappers(t *testing.T) {
 			_ = json.NewEncoder(w).Encode(map[string]string{"value": "p"})
 		case "/pt":
 			_ = json.NewEncoder(w).Encode(map[string]string{"value": "pt"})
+		case "/pt204":
+			w.WriteHeader(http.StatusNoContent)
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -69,5 +71,10 @@ func TestRootFacadeWrappers(t *testing.T) {
 	outPt, err := PatchJSON[map[string]string, payload](context.Background(), c, "/pt", map[string]string{"x": "1"})
 	if err != nil || outPt.Value != "pt" {
 		t.Fatalf("PatchJSON wrapper failed: out=%+v err=%v", outPt, err)
+	}
+
+	meta, err := PatchNoContentJSON[map[string]string](context.Background(), c, "/pt204", map[string]string{"x": "1"})
+	if err != nil || meta.StatusCode != http.StatusNoContent || !meta.NoContent {
+		t.Fatalf("PatchNoContentJSON wrapper failed: meta=%+v err=%v", meta, err)
 	}
 }

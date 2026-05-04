@@ -66,11 +66,11 @@ func (c *Client) CreateCustomer(ctx context.Context, payload CustomerCreate) (Si
 }
 
 // UpdateCustomer updates a customer using PATCH /api/v1/customers/{customerCode}.
-func (c *Client) UpdateCustomer(ctx context.Context, customerCode string, payload CustomerUpdate) (SingleResponse[Customer], error) {
+func (c *Client) UpdateCustomer(ctx context.Context, customerCode string, payload CustomerUpdate) (UpdateResult, error) {
 	customerCode = strings.TrimSpace(customerCode)
 	if customerCode == "" {
-		return SingleResponse[Customer]{}, fmt.Errorf("customer code is required")
+		return UpdateResult{}, fmt.Errorf("customer code is required")
 	}
 	endpoint := "/api/v1/customers/" + url.PathEscape(customerCode)
-	return PatchJSON[CustomerUpdate, SingleResponse[Customer]](ctx, c, endpoint, payload)
+	return PatchNoContentJSON[CustomerUpdate](ctx, c, endpoint, payload)
 }
