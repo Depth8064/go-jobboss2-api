@@ -91,6 +91,14 @@ type (
 	ReportStatus                 = internal.ReportStatus
 	Salesperson                  = internal.Salesperson
 	ShippingAddress              = internal.ShippingAddress
+	ShopViewAuthenticateRequest  = internal.ShopViewAuthenticateRequest
+	ShopViewAuthenticateResponse = internal.ShopViewAuthenticateResponse
+	ShopViewFilter               = internal.ShopViewFilter
+	ShopViewJob                  = internal.ShopViewJob
+	ShopViewGridOption           = internal.ShopViewGridOption
+	ShopViewKPIDefinition        = internal.ShopViewKPIDefinition
+	ShopViewKPIValue             = internal.ShopViewKPIValue
+	ShopViewResetResponse        = internal.ShopViewResetResponse
 	TaxCode                      = internal.TaxCode
 	Term                         = internal.Term
 	TimeTicket                   = internal.TimeTicket
