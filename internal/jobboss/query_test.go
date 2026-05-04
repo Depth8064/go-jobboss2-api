@@ -1,7 +1,8 @@
 package jobboss
 
 import (
-	"testing")
+	"testing"
+)
 
 func TestQueryHelpers(t *testing.T) {
 	q := NewQuery()
@@ -54,5 +55,3 @@ func TestQueryHelpers(t *testing.T) {
 		t.Fatalf("expected nil query when no values and q nil")
 	}
 }
-
-

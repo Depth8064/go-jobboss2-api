@@ -7,7 +7,8 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
-	"testing")
+	"testing"
+)
 
 func TestCustomersSection(t *testing.T) {
 	active := true
@@ -113,5 +114,3 @@ func TestCustomersSection(t *testing.T) {
 		t.Fatalf("expected empty customer code update error, got %v", err)
 	}
 }
-
-

@@ -2,7 +2,8 @@ package jobboss
 
 import (
 	"testing"
-	"time")
+	"time"
+)
 
 func TestDateFormatting(t *testing.T) {
 	tm := time.Date(2026, 5, 4, 15, 16, 17, 0, time.FixedZone("X", -7*3600))
@@ -13,5 +14,3 @@ func TestDateFormatting(t *testing.T) {
 		t.Fatalf("unexpected datetime: %s", got)
 	}
 }
-
-

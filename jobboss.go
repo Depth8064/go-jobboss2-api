@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"time"
 
-	internal "go-jobboss2-api/internal/jobboss"
+	internal "github.com/Depth8064/go-jobboss2-api/internal/jobboss"
 )
 
 // Public type aliases re-exported from internal implementation.

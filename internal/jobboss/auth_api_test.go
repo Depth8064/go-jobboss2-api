@@ -5,7 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"testing")
+	"testing"
+)
 
 func TestCreateDevice(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
@@ -123,5 +124,3 @@ func TestTryActivateDevice(t *testing.T) {
 		}
 	})
 }
-
-
