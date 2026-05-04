@@ -58,6 +58,7 @@ type (
 	Estimate                     = internal.Estimate
 	EstimateCreate               = internal.EstimateCreate
 	EstimateUpdate               = internal.EstimateUpdate
+	Feedback                     = internal.Feedback
 	ProblemResponse              = internal.ProblemResponse
 )
 
