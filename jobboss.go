@@ -92,6 +92,8 @@ type (
 	VendorReturn                 = internal.VendorReturn
 	VendorReturnLineItem         = internal.VendorReturnLineItem
 	VendorReturnRelease          = internal.VendorReturnRelease
+	WorkCenter                   = internal.WorkCenter
+	WorkCenterMaintenance        = internal.WorkCenterMaintenance
 )
 
 type ListResponse[T any] struct {
