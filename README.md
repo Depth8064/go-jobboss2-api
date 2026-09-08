@@ -173,6 +173,49 @@ day := jobboss.FormatUTCDate(time.Now())
 ts := jobboss.FormatUTCDateTime(time.Now())
 ```
 
+## Live Tenant Smoke Check (Read-Only)
+
+Use the smoke tool to validate real JobBOSS connectivity and auth using only GET endpoints.
+
+1. Copy env template and fill credentials:
+
+```powershell
+Copy-Item resources/live-smoke.env.example .env.live
+```
+
+1. Load env vars in current shell:
+
+```powershell
+Get-Content .env.live |
+  Where-Object { $_ -and -not $_.StartsWith('#') } |
+  ForEach-Object {
+    $k, $v = $_ -split '=', 2
+    [System.Environment]::SetEnvironmentVariable($k, $v, 'Process')
+  }
+```
+
+1. Run smoke checks:
+
+```powershell
+go run ./cmd/live-smoke
+```
+
+The command exits non-zero if any check fails.
+
+Optional:
+
+- `JB2_CHECKS=company,customers,vendors` to run a subset
+- `JB2_TAKE=10` to adjust page size
+- `JB2_TIMEOUT_SEC=30` to increase per-check timeout
+
+Default checks:
+
+- `company`
+- `currency-codes`
+- `departments`
+- `employees`
+- `work-centers`
+
 ## Development
 
 - Run tests: `go test ./...`

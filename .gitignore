@@ -16,6 +16,11 @@ coverage.out
 # Dependency directories (optional)
 /vendor/
 
+# Local environment files
+.env*
+!.env.example
+!*.env.example
+
 # IDE/editor files
 .vscode/
 .idea/
