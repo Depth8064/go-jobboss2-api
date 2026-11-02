@@ -28,10 +28,15 @@ type checkResult struct {
 }
 
 func main() {
+	run(os.Exit)
+}
+
+func run(exit func(int)) {
 	cfg, q, selected, timeout, err := loadConfig()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "config error: %v\n", err)
-		os.Exit(2)
+		exit(2)
+		return
 	}
 
 	client := jobboss.NewClient(cfg)
@@ -48,7 +53,8 @@ func main() {
 		fmt.Printf("FAIL (%s)\n", timeout)
 		fmt.Println("Auth preflight failed; skipping API checks.")
 		fmt.Printf("Error: %v\n", authErr)
-		os.Exit(1)
+		exit(1)
+		return
 	}
 	fmt.Println("OK")
 
@@ -84,7 +90,7 @@ func main() {
 
 	printSummary(results)
 	if hasFailures(results) {
-		os.Exit(1)
+		exit(1)
 	}
 }
 

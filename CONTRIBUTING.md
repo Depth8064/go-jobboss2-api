@@ -21,6 +21,10 @@ go test ./... -coverprofile=coverage.out -covermode=count
 go tool cover -func=coverage.out | tail -n 1
 ```
 
+CI requires 100% statement coverage across all packages, including the live-smoke
+command. Its tests use local HTTP servers with the real API client; no tenant
+credentials or external API calls are needed.
+
 ## Pull Request Checklist
 
 1. Keep changes focused and scoped.
