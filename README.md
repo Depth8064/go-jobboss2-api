@@ -18,6 +18,9 @@ This module provides a fully featured, typed client for JobBOSS2 endpoints, incl
 
 - GitHub Actions runs tests on push to `main` and on pull requests
 - CI uses the latest Go 1.26 patch release (`1.26.x`)
+- Version tag pushes publish GitHub Releases with generated notes only after the
+  same vet, tests, and 100% coverage gate passes. See
+  [Releases](CONTRIBUTING.md#releases) for tagging and manual release instructions.
 
 ## Features
 
